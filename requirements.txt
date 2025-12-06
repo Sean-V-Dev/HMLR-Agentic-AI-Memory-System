@@ -1,0 +1,35 @@
+﻿# HMLR v1 - Core Dependencies
+# Python 3.10+ required
+
+# LLM Providers
+openai>=1.0.0
+anthropic>=0.75.0
+
+# Vector Embeddings & Search
+sentence-transformers>=2.2.0
+torch>=2.0.0
+transformers>=4.30.0
+
+# Database & Storage  
+# sqlite3 is built-in to Python (no install needed)
+
+# Async Support
+# asyncio is built-in to Python (no install needed)
+aiohttp>=3.8.0
+
+# RAGAS Testing (Optional - for validation)
+ragas>=0.4.0
+langsmith>=0.2.0  # Optional - for test result tracking
+datasets>=2.14.0  # Required by RAGAS
+
+# Web Automation (Optional - for demos - not part of HMLR core)
+playwright>=1.40.0
+selenium>=4.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+tiktoken>=0.5.0  # Token counting for OpenAI models
+
+# Phoenix Telemetry (Optional - currently disabled due to version conflict)
+# arize-phoenix>=12.0.0  # Uncomment when compatible with FastAPI 0.104.1

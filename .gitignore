@@ -216,7 +216,6 @@ vcpkg/
 __pycache__/
 *.gguf
 *.png
-*.txt
 
 # Optional
 *.log
