@@ -1,0 +1,37 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-24 14:02:45
+Turn ID: turn_20251124_140245_010
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 0
+retrieved_contexts: 2
+retrieved_sources: 1
+prompt_length_chars: 576
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+### Relevant Past Memories:
+[2025-11-24 14:02] [ref:t_20251124_140244_a8ce6a]
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+[2025-11-24 14:02] [ref:t_20251124_140244_6efe0a]
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+
+
+
+User: Remind me when Alpha is due?

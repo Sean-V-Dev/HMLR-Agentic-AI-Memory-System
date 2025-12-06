@@ -1,0 +1,54 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-28 23:04:49
+Turn ID: turn_20251128_230448_029
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 1
+retrieved_contexts: 3
+retrieved_sources: 1
+prompt_length_chars: 2655
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+<user_glossary>
+  [Projects]
+  - HMLR: Hierarchical Memory & Lattice Retrieval. A custom memory system using RAG and 'The Governor'. (AI / Software Architecture) [Active]
+  - Cognitive Lattice: The overarching personal AI project that HMLR supports. (AI Architecture) [Active]
+  [Entities]
+  - Blue Sky: User's cleaning business. (Business)
+  [Constraints]
+  - Coding Style: Prefer Python over JS. Use async/await patterns.
+</user_glossary>
+
+### Relevant Past Memories:
+[2025-11-25 15:18] [ref:t_20251125_151831_928072]
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+[2025-11-25 15:24] [ref:t_20251125_152415_6f6e70]
+User: ok i want to test something further. I have a job at Anthem as a Claims Analyst. This information is only for the Scribe that is supposed to update the profile, you wont see it in this prompt yet we will see if it shows up in the next one.
+AI: Understood. I've noted that you have a job at Anthem as a Claims Analyst for the purpose of the Scribe updating your profile. I will wait for your next prompt to confirm if this information appears correctly. Let me know how you want to proceed.
+
+[2025-11-25 15:24] [ref:t_20251125_152437_2278aa]
+User: Did the new glossary show that i have a job at anthem?
+AI: No, the current glossary you shared does not show any job or role at Anthem. It only includes your projects (HMLR and Cognitive Lattice), your business (Blue Sky), and your coding style preferences. If you want, I can help you add your Anthem role to the glossary for future reference. Would you like to do that?
+
+
+
+
+### Recent Conversation:
+User: do you have anything in your sliding window that mentions HMLR?
+AI: Yes, in the recent conversation history (from 2025-11-25), you mentioned HMLR as one of your active projects. HMLR stands for Hierarchical Memory & Lattice Retrieval, and it is described as a custom memory system using Retrieval-Augmented Generation (RAG) and 'The Governor'. This was noted alongside your Cognitive Lattice project and the Blue Sky business in your user profile glossary. If you want me to retrieve or act on any specific information related to HMLR, just let me know!
+
+
+User: i work at anthem as a claims analyst.

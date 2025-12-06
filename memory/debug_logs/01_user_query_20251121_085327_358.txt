@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-21 08:53:27
+Turn ID: turn_20251121_085327_358
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+can you tell something about a random mountain in china
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: mountain, china
+Primary Topics: Geography, Travel & Destinations
+Raw Query (for vector search): can you tell something about a random mountain in china

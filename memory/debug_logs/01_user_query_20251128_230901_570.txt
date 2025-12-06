@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-28 23:09:01
+Turn ID: turn_20251128_230901_570
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+i work at anthem as a claims analyst.
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: claims analyst, anthem, work
+Primary Topics: Careers & Employment
+Raw Query (for vector search): i work at anthem as a claims analyst.

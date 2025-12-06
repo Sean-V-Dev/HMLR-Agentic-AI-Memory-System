@@ -1,0 +1,32 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-24 14:02:45
+Turn ID: turn_20251124_140245_010
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 2 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251124_140244_a8ce6a
+Timestamp: 2025-11-24 14:02:44.875236
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: When is Project Alpha due?
+Assistant: Project Alpha is due on Friday.
+
+--- Snippet 2 ---
+Turn ID: t_20251124_140244_6efe0a
+Timestamp: 2025-11-24 14:02:44.991644
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: What is the budget for Project Beta?
+Assistant: Project Beta has a budget of $50k.
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

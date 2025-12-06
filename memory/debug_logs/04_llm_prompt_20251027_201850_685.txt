@@ -1,0 +1,52 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-10-27 20:18:51
+Turn ID: turn_20251027_201850_685
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 2
+retrieved_contexts: 3
+retrieved_sources: 4
+prompt_length_chars: 2260
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+=== RECENT CONVERSATION ===
+
+User: Hello, how are you?
+Assistant: Hello! I'm doing well, thank you. How can I assist you today?
+
+User: can you remember what you told me about leetcode?
+Assistant: Yes! Earlier today, I shared some advice about getting started with LeetCode, especially for someone new to coding. Here's a quick summary of what I mentioned: - **Learn a programming language well:** Choose one commonly used on LeetCode, like Python, Java, or C++, and get comfortable with its syntax and basic features. - **Understand fundamentals:** Focus on key data structures (arrays, linked lists, trees, hash maps) and algorithms (sorting, searching, recursion). - **Practice consistently:** Solve problems regularly, starting with easy ones and gradually moving to medium and hard difficulties. - **Study problem patterns:** Over time, recognize common problem types and techniques (two pointers, sliding window, dynamic programming). - **Use resources:** Leverage online tutorials, discussion forums, and solutions to learn different approaches. If you'd like, I can help you create a step-by-step plan or recommend some beginner-friendly LeetCode problems to start with!
+
+=== RELEVANT HISTORY ===
+Retrieved relevant conversations:
+
+1. [today] (score: 16.63)
+   Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation.
+
+2. [today] (score: 6.38)
+   Q: hello
+Summary: The assistant greeted the user and offered several options for assistance, including continuing memory tests, setting a LeetCode reminder, or discussing a random topic.
+
+3. [today] (score: 5.20)
+   Q: can you remind me what you said about leetcode? if you dont have anything in the sliding window it is ok to say you dont have that conversation
+Summary: The assistant advised someone new to coding that they should learn a programming language well and focus on understanding fundamentals, particularly data structures.
+
+
+=== CURRENT MESSAGE ===
+User: hello
+

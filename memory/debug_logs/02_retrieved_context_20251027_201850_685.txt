@@ -1,0 +1,53 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-10-27 20:18:51
+Turn ID: turn_20251027_201850_685
+Search Method: vector
+================================================================================
+
+RETRIEVED 3 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Relevance Score: 16.630
+Turn ID: t_20251024_222545_af9ddb
+Day: 2025-10-24
+Timestamp: 2025-10-24 22:25:45.120878
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation....
+
+--- Snippet 2 ---
+Relevance Score: 6.385
+Turn ID: t_20251025_090407_858c47
+Day: 2025-10-25
+Timestamp: 2025-10-25 09:04:07.203412
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: hello
+Summary: The assistant greeted the user and offered several options for assistance, including continuing memory tests, setting a LeetCode reminder, or discussing a random topic....
+
+--- Snippet 3 ---
+Relevance Score: 5.202
+Turn ID: t_20251021_130126_6918a0
+Day: 2025-10-21
+Timestamp: 2025-10-21 13:01:26.202946
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you remind me what you said about leetcode? if you dont have anything in the sliding window it is ok to say you dont have that conversation
+Summary: The assistant advised someone new to coding ...
+
+SOURCES (4):
+--------------------------------------------------------------------------------
+  - 2025-10-25
+  - 2025-10-24
+  - 2025-10-23
+  - 2025-10-21
+
+Estimated Tokens: 0
+Retrieved Turn IDs: t_20251024_222545_af9ddb, t_20251025_090407_858c47, t_20251021_113433_ac2d1c, t_20251021_130126_6918a0, t_20251023_100223_919022

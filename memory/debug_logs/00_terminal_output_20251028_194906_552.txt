@@ -1,0 +1,27 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-10-28 19:49:13
+Turn ID: turn_20251028_194906_552
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251028_194906_552.txt
+🌐 Sending direct query to external API...
+🔍 DEBUG: final_plan_json type: <class 'str'>
+🔍 DEBUG: final_plan_json length: 2251
+🔍 DEBUG: First 200 chars: {
+  "plan_title": "7-Day Progressive Rowing Plan",
+  "start_date": "2025-11-03",
+  "end_date": "2025-11-09",
+  "days": [
+    {
+      "date": "2025-11-03",
+      "day_number": 1,
+      "tasks": [
+   📝 Using inline metadata (LLM extraction disabled)...
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251028_194913_53ced8... (seq=0) to day 2025-10-28
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 8 turns
+   ✅ Turn logged: t_20251028_194913_53ced8
+   ⚠️ No keywords available for embedding

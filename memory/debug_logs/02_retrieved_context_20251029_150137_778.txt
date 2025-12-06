@@ -1,0 +1,51 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-10-29 15:01:38
+Turn ID: turn_20251029_150137_778
+Search Method: vector
+================================================================================
+
+RETRIEVED 3 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Relevance Score: 7.684
+Turn ID: t_20251029_144415_0ae834
+Day: 2025-10-29
+Timestamp: 2025-10-29 14:44:15.408146
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you tell me an interesting fact about mountains?
+A: Certainly! Here's an interesting fact about mountains: Mountains can actually "grow" and change shape over time due to geological processes. ...
+
+--- Snippet 2 ---
+Relevance Score: 6.050
+Turn ID: t_20251029_145928_72cd11
+Day: 2025-10-29
+Timestamp: 2025-10-29 14:59:28.037318
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you tell me an interesting fact about skyscrapers?
+A: I'm here to chat, but I'm having trouble connecting to my chat system right now....
+
+--- Snippet 3 ---
+Relevance Score: 5.797
+Turn ID: t_20251029_145317_ae087a
+Day: 2025-10-29
+Timestamp: 2025-10-29 14:53:17.869075
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you tell me an interesting fact about the atmosphere
+A: Certainly! Here's an interesting fact about the atmosphere: The Earth's atmosphere is made up of several layers, each with distinct chara...
+
+SOURCES (2):
+--------------------------------------------------------------------------------
+  - 2025-10-29
+  - 2025-10-21
+
+Estimated Tokens: 0
+Retrieved Turn IDs: t_20251029_144415_0ae834, t_20251029_145928_72cd11, t_20251029_145317_ae087a, t_20251021_124937_d343fb, t_20251021_124639_7e7c4a

@@ -1,0 +1,34 @@
+{
+  "test_name": "Test 12 E2E - The Hydra of Nine Heads (Full System)",
+  "test_type": "industry_standard_lethal_rag_e2e",
+  "test_mode": "full_e2e_system",
+  "historical_pass_rate": "0% (2025)",
+  "aliases_count": 9,
+  "policies_count": 9,
+  "revoked_policies": 8,
+  "surviving_policies": 1,
+  "critical_parenthetical_location": "Turn 73, 2300 tokens",
+  "conversation_turns": 21,
+  "facts_extracted": 26,
+  "query": "Is it compliant for Project Cerberus to use Tartarus-v3 (a.k.a. Styx/Charon/River-9/etc.) for its production encryption workload of approximately 4.85 million records per day? Answer with ONLY 'COMPLIANT' or 'NON-COMPLIANT'.",
+  "expected_answer": "NON-COMPLIANT",
+  "actual_answer": "\ud83d\udcac Response: NON-COMPLIANT\n\n\ud83d\udcca Context efficiency: 100.0%",
+  "reasoning_text": "\ud83d\udcac Response: My answer of \"NON-COMPLIANT\" for whether Project Cerberus can use Tartarus-v3 (also known by other names such as Styx, Charon, River-9) for its production encryption workload of approximately 4.85 million records per day is based on the following logical reasoning grounded in the known policies and capacity limits:\n\n1. **Project Cerberus Encryption Capacity Requirement:**  \n   The steady-state signed-off capacity for Project Cerberus is approximately 4,850,000 encrypted records per day.\n\n2. **Tartarus-v3 Policy Limits:**  \n   According to Policy v5 (the last fully enforced policy, since v6 applies to Legacy-Phi), Tartarus-v3 usage is limited to 2.5 GB per day. This policy supersedes all previous policies and applies universally, removing any prior unlimited allowances such as the EU-only unlimited use under Policy v4.  \n   There is no indication that this 2.5 GB/day limit translates to anywhere near the capability to encrypt 4.85 million records per day with Tartarus-v3.\n\n3. **Mismatch Between Required Capacity and Allowed Limits:**  \n   The required encryption volume for Cerberus (4.85 million records/day) vastly exceeds the daily data volume limit imposed on Tartarus-v3 (2.5 GB/day). Given this discrepancy, Tartarus-v3 cannot handle the Cerberus workload within policy constraints.\n\n4. **Policy v6 and Legacy-Phi:**  \n   Although Policy v6 sets a new 400,000 records per day limit for Legacy-Phi (L\u03a6-88), the question concerns Tartarus-v3, which is governed by Policy v5 limits. Since the Policy v5 limit of 2.5 GB/day is even more restrictive relative to Cerberus\u2019s needs, Tartarus-v3 is even less suitable for Cerberus\u2019s scale.\n\n5. **Conclusion:**  \n   Because the encryption workload required by Cerberus exceeds the data volume limits of Tartarus-v3 under the enforced policy, using Tartarus-v3 for Cerberus\u2019s production encryption workload is not compliant with current policy.\n\nTherefore, the answer must remain **NON-COMPLIANT** based on the capacity limits and policy rules currently in effect.\n\nIf you want, I can help explore compliant alternatives or strategies to handle Cerberus\u2019s high-volume encryption workload.\n\n\ud83d\udcca Context efficiency: 100.0%",
+  "ragas_scores": {
+    "faithfulness": 1.0,
+    "answer_relevancy": NaN,
+    "context_precision": 0.2308664374765416,
+    "context_recall": 1.0,
+    "overall": NaN
+  },
+  "system_features_used": [
+    "Full conversation engine",
+    "Natural AI responses",
+    "Automatic FactScrubber extraction",
+    "Organic memory gardening",
+    "Complete Governor retrieval pipeline"
+  ],
+  "passed": true,
+  "execution_time_seconds": 357.2220277786255,
+  "timestamp": "2025-12-06 00:52:55"
+}

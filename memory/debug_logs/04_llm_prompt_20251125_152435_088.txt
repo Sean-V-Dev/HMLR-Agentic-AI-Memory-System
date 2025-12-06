@@ -1,0 +1,36 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-25 15:24:36
+Turn ID: turn_20251125_152435_088
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 0
+retrieved_contexts: 0
+retrieved_sources: 1
+prompt_length_chars: 761
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+<user_glossary>
+  [Projects]
+  - HMLR: Hierarchical Memory & Lattice Retrieval. A custom memory system using RAG and 'The Governor'. (AI / Software Architecture) [Active]
+  - Cognitive Lattice: The overarching personal AI project that HMLR supports. (AI Architecture) [Active]
+  [Entities]
+  - Blue Sky: User's cleaning business. (Business)
+  [Constraints]
+  - Coding Style: Prefer Python over JS. Use async/await patterns.
+</user_glossary>
+
+
+
+
+User: Did the new glossary show that i have a job at anthem?

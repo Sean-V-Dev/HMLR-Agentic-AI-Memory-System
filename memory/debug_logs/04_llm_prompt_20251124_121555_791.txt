@@ -1,0 +1,99 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-24 12:15:55
+Turn ID: turn_20251124_121555_791
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 20
+retrieved_contexts: 2
+retrieved_sources: 1
+prompt_length_chars: 4161
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+### Relevant Past Memories:
+[2025-11-24 12:15] [ref:t_20251124_121555_f5d69b]
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+[2025-11-24 12:15] [ref:t_20251124_121555_3ee9e8]
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+
+
+
+### Recent Conversation:
+User: help me make a plan to walk for 7 days
+AI: Created a new plan: '7-Day Walking Plan' with 7 tasks from 2025-10-29 to 2025-11-04.
+
+User: can you help me create a 2 week plan for practicing leetcode problems?
+AI: Created a new plan: '2-Week LeetCode Practice Plan' with 25 tasks from 2025-10-29 to 2025-11-11.
+
+User: Can you help me create a plan to row for 7 days, starting next Monday on the third of november. I have a rowing machine at home. I know *how* to row but im out of practice so i need to start slow. start with just 10 minute sessions, i want to do them at noon.
+AI: Created a new plan: '7-Day Progressive Rowing Plan' with 7 tasks from 2025-11-03 to 2025-11-09.
+
+User: are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+AI: I do have access to your active plans from our recent conversations. Currently, you have these active plans: - 7-Day Walking Plan (2025-10-29 to 2025-11-04) - 2-Week LeetCode Practice Plan (2025-10-29 to 2025-11-11) - 7-Day Progressive Rowing Plan (2025-11-03 to 2025-11-09) If you want, I can provide more details or help you manage any of these!
+
+User: hello
+AI: Hello! How can I assist you today? Would you like to continue with any of your active plans, talk about LeetCode, or something else?
+
+User: can you tell something about a random mountain in china
+AI: Sure! Here's something interesting about Mount Tai (泰山), one of the most famous mountains in China: Mount Tai is located in Shandong Province and is considered one of the "Five Great Mountains" of China. It holds great cultural and historical significance, having been a place of worship for over 3,000 years. Emperors of various dynasties would perform rituals and offer sacrifices at Mount Tai to pray for peace and prosperity. Geologically, Mount Tai is a massive granite mountain with an elevation of about 1,545 meters (5,069 feet). It features numerous ancient temples, stone inscriptions, and scenic cliffs. One of the famous spots on the mountain is the "Heavenly Candle Peak," which resembles a burning candle. Mount Tai is also a UNESCO World Heritage Site, recognized for both its natural beauty and cultural importance. Would you like to hear about another mountain in China or more details about Mount Tai?
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+
+User: Remind me when Alpha is due?

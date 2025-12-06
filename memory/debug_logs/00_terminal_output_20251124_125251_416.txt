@@ -1,0 +1,77 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-11-24 12:52:57
+Turn ID: turn_20251124_125251_416
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251124_125251_416.txt
+   🤖 Using GPT-4.1-nano keywords for retrieval: ['mountain', 'china']
+   🔄 Active Span: span_20251124_125251_417286 (Geography)
+   📝 Debug: User query logged to 01_user_query_20251124_125251_416.txt
+   🕸️  Lattice Retrieval: Fetching candidates...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['mountain', 'china']
+   Primary Topics: ['Geography', 'Travel & Landmarks']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'mountain china Geography Travel & Landmarks...'
+      Query keywords (6): ['mountain', 'china', 'Geography', 'Travel', '&', 'Landmarks']
+      Found 6 turns with keyword matches
+   🎯 Top matches:
+      1. score=13.02 | 5 kw matches | avg_sim=0.645 | mountains, geography...
+      2. score=10.95 | 4 kw matches | avg_sim=0.731 | mountain, china...
+      3. score=5.34 | 2 kw matches | avg_sim=0.425 | History, History...
+   ✅ Returning 6 ranked results
+   🔑 Search query (keywords): 'mountain china Geography Travel & Landmarks'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 6
+   Keyword results: 0
+   Total candidates: 6
+✅ Retrieved context: 6 snippets, 3 sources
+      Found 6 candidates
+   🏛️  The Governor: Filtering memories...
+🌐 Sending direct query to external API (model: gpt-4.1-nano)...
+      Governor approved 1/6 memories
+   💧 Hydrator: Building context...
+      Final context count: 1
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251124_125251_416.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251124_125251_416.txt
+   💧 Building contextualized prompt...
+      📏 Full prompt length: 5411 chars
+      📋 Sliding window: 20 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251124_125251_416.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API (model: gpt-4.1-mini)...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+   📝 Debug: LLM response logged to 05_llm_response_20251124_125251_416.txt
+   📝 Using GPT-4.1-nano keywords (2): ['mountain', 'china']
+   🏷️  Using GPT-4.1-nano topics (2): ['Geography', 'Travel & Landmarks']
+   😊 Detected affect: curious
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251124_125256_24df72... (seq=0) to day 2025-11-24
+      🔑 Saved 2 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 20 turns
+   ✅ Turn logged: t_20251124_125256_24df72
+   🔗 Linked turn t_20251124_125256_24df72 to span span_20251124_125251_417286
+   🔍 Generating embeddings from 2 LLM-extracted keywords...
+   🔍 Generated 2 keyword embedding(s)
+   🎯 Phase 4.3: Applying adaptive compression...
+      📊 Sliding window has 20 turns - checking compression...
+      Compression decision: compress_partial
+      Reason: Very different but recent (dist: 0.933, gap: 0.6h)
+      ✅ Compressed 10 turns
+   💾 Saved sliding window state: 20 turns

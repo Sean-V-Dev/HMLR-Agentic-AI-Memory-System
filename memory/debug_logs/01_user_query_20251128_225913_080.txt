@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-28 22:59:13
+Turn ID: turn_20251128_225913_080
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+do you have anything in your sliding window that mentions HMLR?
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: HMLR
+Primary Topics: Legal Services, Property Records
+Raw Query (for vector search): do you have anything in your sliding window that mentions HMLR?

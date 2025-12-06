@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-24 12:52:51
+Turn ID: turn_20251124_125251_416
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+Hey, can you tell me something interesting about a mountain in china
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: mountain, china
+Primary Topics: Geography, Travel & Landmarks
+Raw Query (for vector search): Hey, can you tell me something interesting about a mountain in china

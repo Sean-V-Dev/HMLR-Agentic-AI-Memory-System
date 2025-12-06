@@ -1,0 +1,22 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-10-27 20:18:51
+Turn ID: turn_20251027_201850_685
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+hello
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.50
+Keywords: hello, context, metadata, intent, understanding, conversation, depth, recent, turns, hello context
+Primary Topics: challenge, minutes, rowing
+Raw Query (for vector search): hello
+
+[Context metadata for intent understanding:
+Conversation depth: 2 recent turns
+]

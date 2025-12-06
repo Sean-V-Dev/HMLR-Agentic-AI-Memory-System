@@ -1,0 +1,53 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-28 23:09:03
+Turn ID: turn_20251128_230901_570
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 2
+retrieved_contexts: 2
+retrieved_sources: 1
+prompt_length_chars: 2377
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+<user_glossary>
+  [Projects]
+  - HMLR: Hierarchical Memory & Lattice Retrieval. A custom memory system using RAG and 'The Governor'. (AI / Software Architecture) [Active]
+  - Cognitive Lattice: The overarching personal AI project that HMLR supports. (AI Architecture) [Active]
+  [Entities]
+  - Blue Sky: User's cleaning business. (Business)
+  [Constraints]
+  - Coding Style: Prefer Python over JS. Use async/await patterns.
+</user_glossary>
+
+### Relevant Past Memories:
+[2025-11-25 15:18] [ref:t_20251125_151831_928072]
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+[2025-11-28 23:04] [ref:t_20251128_230452_3086a3]
+User: i work at anthem as a claims analyst.
+AI: Got it—I've noted that you work at Anthem as a Claims Analyst. Would you like me to update your user glossary/profile to include this role for future reference? This way, I can keep it in mind alongside your projects like HMLR, Cognitive Lattice, and your Blue Sky business.
+
+
+
+
+### Recent Conversation:
+User: do you have anything in your sliding window that mentions HMLR?
+AI: Yes, in the recent conversation history (from 2025-11-25), you mentioned HMLR as one of your active projects. HMLR stands for Hierarchical Memory & Lattice Retrieval, and it is described as a custom memory system using Retrieval-Augmented Generation (RAG) and 'The Governor'. This was noted alongside your Cognitive Lattice project and the Blue Sky business in your user profile glossary. If you want me to retrieve or act on any specific information related to HMLR, just let me know!
+
+User: i work at anthem as a claims analyst.
+AI: Got it—I've noted that you work at Anthem as a Claims Analyst. Would you like me to update your user glossary/profile to include this role for future reference? This way, I can keep it in mind alongside your projects like HMLR, Cognitive Lattice, and your Blue Sky business.
+
+
+User: i work at anthem as a claims analyst.

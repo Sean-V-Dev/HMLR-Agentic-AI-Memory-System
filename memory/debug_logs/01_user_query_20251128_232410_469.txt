@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-28 23:24:10
+Turn ID: turn_20251128_232410_469
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+can you tell me something about a mountain in india?
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: mountain, India
+Primary Topics: Geography, Landmarks
+Raw Query (for vector search): can you tell me something about a mountain in india?

@@ -1,0 +1,32 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-25 15:24:13
+Turn ID: turn_20251125_152412_259
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 2 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251125_151831_928072
+Timestamp: 2025-11-25 15:18:31.151261
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+--- Snippet 2 ---
+Turn ID: t_20251125_152201_20bb6c
+Timestamp: 2025-11-25 15:22:01.375156
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: Yes, I have received your user profile glossary mentioning HMLR (Hierarchical Memory & Lattice Retrieval), Cognitive Lattice, and Blue Sky as your cleaning business. These entries are part of your active projects and entities, which I can use to provide more personalized and context-aware responses. If you want, I can help you test or develop the memory system further with this context in mind.
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

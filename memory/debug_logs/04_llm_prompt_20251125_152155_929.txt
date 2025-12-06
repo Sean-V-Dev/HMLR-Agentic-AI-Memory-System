@@ -1,0 +1,46 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-25 15:21:57
+Turn ID: turn_20251125_152155_929
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 1
+retrieved_contexts: 1
+retrieved_sources: 1
+prompt_length_chars: 1528
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+<user_glossary>
+  [Projects]
+  - HMLR: Hierarchical Memory & Lattice Retrieval. A custom memory system using RAG and 'The Governor'. (AI / Software Architecture) [Active]
+  - Cognitive Lattice: The overarching personal AI project that HMLR supports. (AI Architecture) [Active]
+  [Entities]
+  - Blue Sky: User's cleaning business. (Business)
+  [Constraints]
+  - Coding Style: Prefer Python over JS. Use async/await patterns.
+</user_glossary>
+
+### Relevant Past Memories:
+[2025-11-25 15:18] [ref:t_20251125_151831_928072]
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+
+
+
+### Recent Conversation:
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?

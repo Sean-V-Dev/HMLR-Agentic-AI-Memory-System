@@ -1,0 +1,53 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-10-27 16:23:29
+Turn ID: turn_20251027_162328_918
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 1
+retrieved_contexts: 4
+retrieved_sources: 3
+prompt_length_chars: 1618
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+=== RECENT CONVERSATION ===
+
+User: Hello, how are you?
+Assistant: Hello! I'm doing well, thank you. How can I assist you today?
+
+=== RELEVANT HISTORY ===
+Retrieved relevant conversations:
+
+1. [today] (score: 9.47)
+   Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation.
+
+2. [today] (score: 7.88)
+   Q: i know you just reminded me, sorry this is a test of a different system not you, but can you remind me of what you told me about leetcode again?
+Summary: Assisted user in getting started with LeetCode by emphasizing the importance of learning a programming language, understanding fundamentals, and practicing consistently.
+
+3. [today] (score: 5.96)
+   Q: can you remind me, again, what you have told me about leetcode?
+Summary: The user asked for a reminder about Leetcode, but the assistant encountered an error while trying to retrieve information from the OpenAI API.
+
+4. [today] (score: 5.79)
+   Q: as someone who is new to coding, what do you think i should do to get started with leetcode problems?
+Summary: Assisted user in getting started with LeetCode by suggesting learning a programming language, understanding data structures and algorithms, and following a consistent practice routine.
+
+
+=== CURRENT MESSAGE ===
+User: can you remember what you told me about leetcode?
+

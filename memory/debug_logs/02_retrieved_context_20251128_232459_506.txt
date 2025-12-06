@@ -1,0 +1,40 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-28 23:25:00
+Turn ID: turn_20251128_232459_506
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 3 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251125_151831_928072
+Timestamp: 2025-11-25 15:18:31.151261
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+--- Snippet 2 ---
+Turn ID: t_20251124_125256_24df72
+Timestamp: 2025-11-24 12:52:56.883799
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Hey, can you tell me something interesting about a mountain in china
+Assistant: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+--- Snippet 3 ---
+Turn ID: t_20251124_125535_0fbccf
+Timestamp: 2025-11-24 12:55:35.101186
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: im not from that part of the world, can you give me a way to estimate how far it is from like hong kong or something like that, that i would know from china?
+Assistant: Absolutely! To estimate how far Huangshan is from Hong Kong, you can consider the approximate straight-line (as-the-crow-flies) distance between the two locations. - Hong Kong is in the southern part of China, near the coast. - Huangshan is in Anhui Province, which is more inland and to the northeast of Hong Kong. The straight-line distance from Hong Kong to Huangshan is roughly around 800 to 900 kilometers (about 500 to 560 miles). For a rough travel time context: - By air, a direct flight might take about 1.5 to 2 hours (if there were direct flights). - By train or car, it would be considerably longer, likely 8 to 12 hours depending on the route and mode of transport. If you'd like, I can also help you with estimating distances from Hong Kong to other places in China or suggest ways to calculate distances using online tools or maps!
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

@@ -1,0 +1,63 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-10-27 16:23:29
+Turn ID: turn_20251027_162328_918
+Search Method: vector
+================================================================================
+
+RETRIEVED 4 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Relevance Score: 9.472
+Turn ID: t_20251024_222545_af9ddb
+Day: 2025-10-24
+Timestamp: 2025-10-24 22:25:45.120878
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation....
+
+--- Snippet 2 ---
+Relevance Score: 7.878
+Turn ID: t_20251023_100223_919022
+Day: 2025-10-23
+Timestamp: 2025-10-23 10:02:23.566583
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: i know you just reminded me, sorry this is a test of a different system not you, but can you remind me of what you told me about leetcode again?
+Summary: Assisted user in getting started with LeetC...
+
+--- Snippet 3 ---
+Relevance Score: 5.963
+Turn ID: t_20251024_222314_b4d2cd
+Day: 2025-10-24
+Timestamp: 2025-10-24 22:23:14.390044
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you remind me, again, what you have told me about leetcode?
+Summary: The user asked for a reminder about Leetcode, but the assistant encountered an error while trying to retrieve information fr...
+
+--- Snippet 4 ---
+Relevance Score: 5.791
+Turn ID: t_20251021_115649_0fc6dc
+Day: 2025-10-21
+Timestamp: 2025-10-21 11:56:49.604466
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: as someone who is new to coding, what do you think i should do to get started with leetcode problems?
+Summary: Assisted user in getting started with LeetCode by suggesting learning a programming la...
+
+SOURCES (3):
+--------------------------------------------------------------------------------
+  - 2025-10-24
+  - 2025-10-23
+  - 2025-10-21
+
+Estimated Tokens: 0
+Retrieved Turn IDs: t_20251024_222545_af9ddb, t_20251023_100223_919022, t_20251021_113433_ac2d1c, t_20251024_222314_b4d2cd, t_20251021_115649_0fc6dc

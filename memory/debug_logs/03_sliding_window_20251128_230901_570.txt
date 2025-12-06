@@ -1,0 +1,34 @@
+================================================================================
+SLIDING WINDOW (Recent Conversation Context)
+================================================================================
+Timestamp: 2025-11-28 23:09:03
+Turn ID: turn_20251128_230901_570
+================================================================================
+
+WINDOW SIZE: 2 / 20 turns
+
+TURNS IN WINDOW:
+--------------------------------------------------------------------------------
+
+--- Turn 1 ---
+Turn ID: t_20251128_225917_07d814
+Sequence: 0
+Timestamp: 2025-11-28T22:59:17.286468
+
+User: do you have anything in your sliding window that mentions HMLR?
+
+Assistant: Yes, in the recent conversation history (from 2025-11-25), you mentioned HMLR as one of your active projects. HMLR stands for Hierarchical Memory & Lattice Retrieval, and it is described as a custom memory system using Retrieval-Augmented Generation (RAG) and 'The Governor'. This was noted alongside your Cognitive Lattice project and the Blue Sky business in your user profile glossary. If you want me to retrieve or act on any specific information related to HMLR, just let me know!
+
+Keywords: HMLR
+
+--- Turn 2 ---
+Turn ID: t_20251128_230452_3086a3
+Sequence: 0
+Timestamp: 2025-11-28T23:04:52.137337
+
+User: i work at anthem as a claims analyst.
+
+Assistant: Got it—I've noted that you work at Anthem as a Claims Analyst. Would you like me to update your user glossary/profile to include this role for future reference? This way, I can keep it in mind alongside your projects like HMLR, Cognitive Lattice, and your Blue Sky business.
+
+Keywords: claims analyst, anthem, work
+

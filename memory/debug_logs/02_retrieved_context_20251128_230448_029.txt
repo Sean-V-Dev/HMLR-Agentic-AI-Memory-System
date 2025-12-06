@@ -1,0 +1,40 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-28 23:04:49
+Turn ID: turn_20251128_230448_029
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 3 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251125_152437_2278aa
+Timestamp: 2025-11-25 15:24:37.845691
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Did the new glossary show that i have a job at anthem?
+Assistant: No, the current glossary you shared does not show any job or role at Anthem. It only includes your projects (HMLR and Cognitive Lattice), your business (Blue Sky), and your coding style preferences. If you want, I can help you add your Anthem role to the glossary for future reference. Would you like to do that?
+
+--- Snippet 2 ---
+Turn ID: t_20251125_152415_6f6e70
+Timestamp: 2025-11-25 15:24:15.324791
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: ok i want to test something further. I have a job at Anthem as a Claims Analyst. This information is only for the Scribe that is supposed to update the profile, you wont see it in this prompt yet we will see if it shows up in the next one.
+Assistant: Understood. I've noted that you have a job at Anthem as a Claims Analyst for the purpose of the Scribe updating your profile. I will wait for your next prompt to confirm if this information appears correctly. Let me know how you want to proceed.
+
+--- Snippet 3 ---
+Turn ID: t_20251125_151831_928072
+Timestamp: 2025-11-25 15:18:31.151261
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

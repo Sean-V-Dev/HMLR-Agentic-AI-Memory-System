@@ -1,0 +1,24 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-24 12:55:31
+Turn ID: turn_20251124_125530_617
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 1 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251124_125256_24df72
+Timestamp: 2025-11-24 12:52:56.883799
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Hey, can you tell me something interesting about a mountain in china
+Assistant: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

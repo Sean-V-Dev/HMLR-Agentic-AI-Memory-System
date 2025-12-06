@@ -1,0 +1,16 @@
+================================================================================
+LLM RESPONSE
+================================================================================
+Timestamp: 2025-10-29 20:23:23
+Turn ID: turn_20251029_202321_345
+================================================================================
+
+RESPONSE METADATA:
+--------------------------------------------------------------------------------
+response_length_chars: 132
+citations_found: 0
+context_efficiency: N/A
+
+FULL RESPONSE:
+--------------------------------------------------------------------------------
+Hello! How can I assist you today? Would you like to continue with any of your active plans, talk about LeetCode, or something else?

@@ -1,0 +1,32 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-28 22:59:15
+Turn ID: turn_20251128_225913_080
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 2 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251125_153103_4933b6
+Timestamp: 2025-11-25 15:31:03.872992
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: ok i want to test something further. I have a job at Anthem as a Claims Analyst. This information is only for the Scribe that is supposed to update the profile, you wont see it in this prompt yet we will see if it shows up in the next one.
+Assistant: Yes, I have your glossary loaded with the projects HMLR and Cognitive Lattice, and the business Blue Sky. I also noted your preference for Python with async/await for coding style. How can I assist you with your memory system test or anything else today?
+
+--- Snippet 2 ---
+Turn ID: t_20251125_153036_6d7f61
+Timestamp: 2025-11-25 15:30:36.476965
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: Yes, I have received your user profile glossary that includes your projects HMLR (Hierarchical Memory & Lattice Retrieval), Cognitive Lattice (your overarching personal AI project), and your business Blue Sky (your cleaning business). This glossary is currently active and part of your profile. If you want me to reference these in future conversations or integrate them into your memory system testing, just let me know!
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

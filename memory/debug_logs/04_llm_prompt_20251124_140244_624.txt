@@ -1,0 +1,90 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-24 14:02:44
+Turn ID: turn_20251124_140244_624
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 20
+retrieved_contexts: 0
+retrieved_sources: 1
+prompt_length_chars: 6260
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+
+
+
+### Recent Conversation:
+User: hello
+AI: Hello! How can I assist you today? Would you like to continue with any of your active plans, talk about LeetCode, or something else?
+
+User: can you tell something about a random mountain in china
+AI: Sure! Here's something interesting about Mount Tai (泰山), one of the most famous mountains in China: Mount Tai is located in Shandong Province and is considered one of the "Five Great Mountains" of China. It holds great cultural and historical significance, having been a place of worship for over 3,000 years. Emperors of various dynasties would perform rituals and offer sacrifices at Mount Tai to pray for peace and prosperity. Geologically, Mount Tai is a massive granite mountain with an elevation of about 1,545 meters (5,069 feet). It features numerous ancient temples, stone inscriptions, and scenic cliffs. One of the famous spots on the mountain is the "Heavenly Candle Peak," which resembles a burning candle. Mount Tai is also a UNESCO World Heritage Site, recognized for both its natural beauty and cultural importance. Would you like to hear about another mountain in China or more details about Mount Tai?
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: Hey, can you tell me something interesting about a mountain in china
+AI: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+User: im not from that part of the world, can you give me a way to estimate how far it is from like hong kong or something like that, that i would know from china?
+AI: Absolutely! To estimate how far Huangshan is from Hong Kong, you can consider the approximate straight-line (as-the-crow-flies) distance between the two locations. - Hong Kong is in the southern part of China, near the coast. - Huangshan is in Anhui Province, which is more inland and to the northeast of Hong Kong. The straight-line distance from Hong Kong to Huangshan is roughly around 800 to 900 kilometers (about 500 to 560 miles). For a rough travel time context: - By air, a direct flight might take about 1.5 to 2 hours (if there were direct flights). - By train or car, it would be considerably longer, likely 8 to 12 hours depending on the route and mode of transport. If you'd like, I can also help you with estimating distances from Hong Kong to other places in China or suggest ways to calculate distances using online tools or maps!
+
+User: great, can you tell me another interesting fact about hong kong city? also, i need to test a memory system im working on, can you tell me if in your prompt that was included, other than my question about hong kong, you were given a sliding window context with anything about like project alpha or beta?
+AI: Sure! Here's an interesting fact about Hong Kong city: Hong Kong is home to the world's longest outdoor covered escalator system, known as the Central–Mid-Levels escalator. It stretches over 800 meters (about half a mile) in length and rises over 135 meters (443 feet) in elevation. This escalator system helps thousands of commuters each day travel between the Central business district and the Mid-Levels residential area, making uphill travel much easier in the city's steep terrain. Regarding your memory system test: Yes, in the recent conversation history I have access to, there were multiple mentions of Project Alpha and Project Beta, including their due dates and budgets. These were part of the sliding window context I used to respond to your queries earlier. So, the prompt context did include both your question about Hong Kong and several references to Project Alpha and Beta. Let me know if you want me to confirm or test anything else for your system!
+
+
+User: When is Project Alpha due?

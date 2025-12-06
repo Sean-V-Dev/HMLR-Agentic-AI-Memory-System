@@ -1,0 +1,54 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-10-27 20:22:50
+Turn ID: turn_20251027_202249_692
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 4
+retrieved_contexts: 2
+retrieved_sources: 4
+prompt_length_chars: 3024
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+=== RECENT CONVERSATION ===
+
+User: Hello, how are you?
+Assistant: Hello! I'm doing well, thank you. How can I assist you today?
+
+User: can you remember what you told me about leetcode?
+Assistant: Yes! Earlier today, I shared some advice about getting started with LeetCode, especially for someone new to coding. Here's a quick summary of what I mentioned: - **Learn a programming language well:** Choose one commonly used on LeetCode, like Python, Java, or C++, and get comfortable with its syntax and basic features. - **Understand fundamentals:** Focus on key data structures (arrays, linked lists, trees, hash maps) and algorithms (sorting, searching, recursion). - **Practice consistently:** Solve problems regularly, starting with easy ones and gradually moving to medium and hard difficulties. - **Study problem patterns:** Over time, recognize common problem types and techniques (two pointers, sliding window, dynamic programming). - **Use resources:** Leverage online tutorials, discussion forums, and solutions to learn different approaches. If you'd like, I can help you create a step-by-step plan or recommend some beginner-friendly LeetCode problems to start with!
+
+User: hello
+Assistant: Hello again! How can I assist you today? Would you like to continue talking about LeetCode, coding, or something else?
+
+User: can you tell me an interesting science fact
+Assistant: Sure! Here's an interesting science fact: Did you know that water can exist in all three states of matter—solid, liquid, and gas—at the same time? This is called the **triple point** of water. It occurs at a very specific temperature and pressure (0.01°C and 611.657 pascals). At this point, ice, liquid water, and water vapor coexist in equilibrium. This phenomenon is used to calibrate thermometers because it's such a precise and reproducible condition! Would you like to hear another science fact or learn more about this one?
+
+=== RELEVANT HISTORY ===
+Retrieved relevant conversations:
+
+1. [today] (score: 11.54)
+   Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation.
+
+2. [today] (score: 2.92)
+   Q: i know this is the third time i asked about leetcode, im the developer of the cognitive lattice that you see the rest of the prompt for besides just this user facing one, im testing the memory retrieval mechanism. So, can you remind me again of what you have told me about leetcode please.
+Summary: The user asked for a reminder about what was said about Leetcode, mentioned being the developer of a cognitive lattice and testing memory retrieval. The assistant couldn't provide information due to technical difficulties.
+
+
+=== CURRENT MESSAGE ===
+User: can you remember what we talked about history?
+

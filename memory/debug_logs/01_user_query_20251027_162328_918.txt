@@ -1,0 +1,22 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-10-27 16:23:29
+Turn ID: turn_20251027_162328_918
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+can you remember what you told me about leetcode?
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: memory_query
+Confidence: 0.75
+Keywords: remember, told, leetcode, context, metadata, intent, understanding, conversation, depth, recent
+Primary Topics: minutes, rowing, exercise
+Raw Query (for vector search): can you remember what you told me about leetcode?
+
+[Context metadata for intent understanding:
+Conversation depth: 1 recent turns
+]

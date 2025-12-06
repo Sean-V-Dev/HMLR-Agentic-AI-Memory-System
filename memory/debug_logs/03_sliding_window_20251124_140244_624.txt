@@ -1,0 +1,231 @@
+================================================================================
+SLIDING WINDOW (Recent Conversation Context)
+================================================================================
+Timestamp: 2025-11-24 14:02:44
+Turn ID: turn_20251124_140244_624
+================================================================================
+
+WINDOW SIZE: 20 / 20 turns
+
+TURNS IN WINDOW:
+--------------------------------------------------------------------------------
+
+--- Turn 1 ---
+Turn ID: t_20251029_202323_dbf59d
+Sequence: 0
+Timestamp: 2025-10-29T20:23:23.647109
+
+User: hello
+
+Assistant: [Compressed] Summary unavailable
+
+
+--- Turn 2 ---
+Turn ID: t_20251121_085332_b2a8d7
+Sequence: 0
+Timestamp: 2025-11-21T08:53:32.141573
+
+User: can you tell something about a random mountain in china
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: mountain, china
+
+--- Turn 3 ---
+Turn ID: t_20251124_120759_7ae42a
+Sequence: 0
+Timestamp: 2025-11-24T12:07:59.236642
+
+User: When is Project Alpha due?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Alpha, Alpha, project
+
+--- Turn 4 ---
+Turn ID: t_20251124_121012_58a607
+Sequence: 0
+Timestamp: 2025-11-24T12:10:12.830803
+
+User: When is Project Alpha due?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Alpha, Alpha, project
+
+--- Turn 5 ---
+Turn ID: t_20251124_121045_c1ca54
+Sequence: 0
+Timestamp: 2025-11-24T12:10:45.125729
+
+User: When is Project Alpha due?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Alpha, deadline
+
+--- Turn 6 ---
+Turn ID: t_20251124_121045_66cbf3
+Sequence: 1
+Timestamp: 2025-11-24T12:10:45.162285
+
+User: What is the budget for Project Beta?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Beta?, Beta?, project beta, budget, project, beta
+
+--- Turn 7 ---
+Turn ID: t_20251124_121149_e607d7
+Sequence: 0
+Timestamp: 2025-11-24T12:11:49.090157
+
+User: When is Project Alpha due?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Alpha, deadline
+
+--- Turn 8 ---
+Turn ID: t_20251124_121149_6e17c1
+Sequence: 1
+Timestamp: 2025-11-24T12:11:49.165888
+
+User: What is the budget for Project Beta?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Beta, budget
+
+--- Turn 9 ---
+Turn ID: t_20251124_121149_55a53a
+Sequence: 2
+Timestamp: 2025-11-24T12:11:49.231479
+
+User: Remind me when Alpha is due?
+
+Assistant: [Compressed] Summary unavailable
+
+Keywords: Project Alpha
+
+--- Turn 10 ---
+Turn ID: t_20251124_121413_d1b84f
+Sequence: 0
+Timestamp: 2025-11-24T12:14:13.728298
+
+User: When is Project Alpha due?
+
+Assistant: Project Alpha is due on Friday.
+
+Keywords: Project Alpha, deadline
+
+--- Turn 11 ---
+Turn ID: t_20251124_121413_f490d6
+Sequence: 1
+Timestamp: 2025-11-24T12:14:13.801307
+
+User: What is the budget for Project Beta?
+
+Assistant: Project Beta has a budget of $50k.
+
+Keywords: Project Beta, budget
+
+--- Turn 12 ---
+Turn ID: t_20251124_121452_a6a117
+Sequence: 0
+Timestamp: 2025-11-24T12:14:52.426569
+
+User: When is Project Alpha due?
+
+Assistant: Project Alpha is due on Friday.
+
+Keywords: Project Alpha, deadline
+
+--- Turn 13 ---
+Turn ID: t_20251124_121452_f3133d
+Sequence: 1
+Timestamp: 2025-11-24T12:14:52.497309
+
+User: What is the budget for Project Beta?
+
+Assistant: Project Beta has a budget of $50k.
+
+Keywords: Project Beta, budget
+
+--- Turn 14 ---
+Turn ID: t_20251124_121452_2b07f3
+Sequence: 2
+Timestamp: 2025-11-24T12:14:52.560623
+
+User: Remind me when Alpha is due?
+
+Assistant: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+Keywords: Project Alpha
+
+--- Turn 15 ---
+Turn ID: t_20251124_121555_f5d69b
+Sequence: 0
+Timestamp: 2025-11-24T12:15:55.676682
+
+User: When is Project Alpha due?
+
+Assistant: Project Alpha is due on Friday.
+
+Keywords: Project Alpha, deadline
+
+--- Turn 16 ---
+Turn ID: t_20251124_121555_3ee9e8
+Sequence: 1
+Timestamp: 2025-11-24T12:15:55.750444
+
+User: What is the budget for Project Beta?
+
+Assistant: Project Beta has a budget of $50k.
+
+Keywords: Project Beta, budget
+
+--- Turn 17 ---
+Turn ID: t_20251124_121555_bcec8d
+Sequence: 2
+Timestamp: 2025-11-24T12:15:55.816111
+
+User: Remind me when Alpha is due?
+
+Assistant: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+Keywords: Project Alpha
+
+--- Turn 18 ---
+Turn ID: t_20251124_125256_24df72
+Sequence: 0
+Timestamp: 2025-11-24T12:52:56.883799
+
+User: Hey, can you tell me something interesting about a mountain in china
+
+Assistant: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+Keywords: mountain, china
+
+--- Turn 19 ---
+Turn ID: t_20251124_125535_0fbccf
+Sequence: 1
+Timestamp: 2025-11-24T12:55:35.101186
+
+User: im not from that part of the world, can you give me a way to estimate how far it is from like hong kong or something like that, that i would know from china?
+
+Assistant: Absolutely! To estimate how far Huangshan is from Hong Kong, you can consider the approximate straight-line (as-the-crow-flies) distance between the two locations. - Hong Kong is in the southern part of China, near the coast. - Huangshan is in Anhui Province, which is more inland and to the northeast of Hong Kong. The straight-line distance from Hong Kong to Huangshan is roughly around 800 to 900 kilometers (about 500 to 560 miles). For a rough travel time context: - By air, a direct flight might take about 1.5 to 2 hours (if there were direct flights). - By train or car, it would be considerably longer, likely 8 to 12 hours depending on the route and mode of transport. If you'd like, I can also help you with estimating distances from Hong Kong to other places in China or suggest ways to calculate distances using online tools or maps!
+
+Keywords: distance estimation, Hong Kong, China
+
+--- Turn 20 ---
+Turn ID: t_20251124_130901_1d591e
+Sequence: 2
+Timestamp: 2025-11-24T13:09:01.773344
+
+User: great, can you tell me another interesting fact about hong kong city? also, i need to test a memory system im working on, can you tell me if in your prompt that was included, other than my question about hong kong, you were given a sliding window context with anything about like project alpha or beta?
+
+Assistant: Sure! Here's an interesting fact about Hong Kong city: Hong Kong is home to the world's longest outdoor covered escalator system, known as the Central–Mid-Levels escalator. It stretches over 800 meters (about half a mile) in length and rises over 135 meters (443 feet) in elevation. This escalator system helps thousands of commuters each day travel between the Central business district and the Mid-Levels residential area, making uphill travel much easier in the city's steep terrain. Regarding your memory system test: Yes, in the recent conversation history I have access to, there were multiple mentions of Project Alpha and Project Beta, including their due dates and budgets. These were part of the sliding window context I used to respond to your queries earlier. So, the prompt context did include both your question about Hong Kong and several references to Project Alpha and Beta. Let me know if you want me to confirm or test anything else for your system!
+
+Keywords: interesting fact, Hong Kong
+

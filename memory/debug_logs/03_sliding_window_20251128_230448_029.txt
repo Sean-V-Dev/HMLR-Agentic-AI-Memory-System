@@ -1,0 +1,23 @@
+================================================================================
+SLIDING WINDOW (Recent Conversation Context)
+================================================================================
+Timestamp: 2025-11-28 23:04:49
+Turn ID: turn_20251128_230448_029
+================================================================================
+
+WINDOW SIZE: 1 / 20 turns
+
+TURNS IN WINDOW:
+--------------------------------------------------------------------------------
+
+--- Turn 1 ---
+Turn ID: t_20251128_225917_07d814
+Sequence: 0
+Timestamp: 2025-11-28T22:59:17.286468
+
+User: do you have anything in your sliding window that mentions HMLR?
+
+Assistant: Yes, in the recent conversation history (from 2025-11-25), you mentioned HMLR as one of your active projects. HMLR stands for Hierarchical Memory & Lattice Retrieval, and it is described as a custom memory system using Retrieval-Augmented Generation (RAG) and 'The Governor'. This was noted alongside your Cognitive Lattice project and the Blue Sky business in your user profile glossary. If you want me to retrieve or act on any specific information related to HMLR, just let me know!
+
+Keywords: HMLR
+

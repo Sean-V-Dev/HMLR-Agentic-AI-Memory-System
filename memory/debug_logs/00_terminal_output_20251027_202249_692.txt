@@ -1,0 +1,120 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-10-27 20:22:51
+Turn ID: turn_20251027_202249_692
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251027_202249_692.txt
+   🔍 Step 1: Quick keyword extraction...
+      Quick keywords: ['remember', 'talked', 'history']
+   📚 Step 2: Retrieving recent context...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['remember', 'talked', 'history']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'remember talked history...'
+      Query keywords (3): ['remember', 'talked', 'history']
+      Found 4 turns with keyword matches
+   🎯 Top matches:
+      1. score=5.76 | 2 kw matches | avg_sim=0.706 | History, History...
+      2. score=3.08 | 1 kw matches | avg_sim=0.483 | reminder...
+      3. score=3.03 | 1 kw matches | avg_sim=0.621 | Conversation...
+   ✅ Returning 4 ranked results
+   🔑 Search query (keywords): 'remember talked history'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 4
+   Keyword results: 0
+   Total candidates: 4
+   📌 Keeping high-similarity turn t_20251021_113433_ac... (similarity=0.706) despite being in window
+   📌 Keeping high-similarity turn t_20251024_222545_af... (similarity=0.621) despite being in window
+   ✅ Window tracking: 13 turns in window, 0 recently seen
+✅ Retrieved context: 3 snippets, 2 sources
+      Retrieved 3 recent contexts
+   🧠 Step 3: Analyzing intent WITH context...
+   📅 Phase 6.2: Analyzing with plan context (1 active plans)
+      Type: memory_query
+      Keywords: ['remember', 'talked', 'history', 'context', 'metadata']
+      Topics: ['exercise', 'challenge', 'rowing']
+   📝 Debug: User query logged to 01_user_query_20251027_202249_692.txt
+   🏷️  Phase 4.1: Extracting topics...
+      Extracted topics: ['history', 'remember', 'talked']
+   🔎 Step 4: Full context retrieval with refined intent...
+      Using plan-boosted retrieval (1 active plans)
+🔍 Crawler: Searching with intent:
+   Query Type: memory_query
+   Keywords: ['remember', 'talked', 'history', 'context', 'metadata', 'intent', 'understanding', 'conversation', 'depth', 'recent']
+   Primary Topics: ['exercise', 'challenge', 'rowing']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'remember talked history context metadata intent understandin...'
+      Query keywords (13): ['remember', 'talked', 'history', 'context', 'metadata', 'intent', 'understanding', 'conversation', 'depth', 'recent', 'exercise', 'challenge', 'rowing']
+      Found 12 turns with keyword matches
+   🎯 Top matches:
+      1. score=11.54 | 5 kw matches | avg_sim=0.696 | Conversation, Conversation...
+      2. score=10.26 | 4 kw matches | avg_sim=0.571 | History, History...
+      3. score=5.20 | 2 kw matches | avg_sim=0.501 | data structures, coding challenges...
+   ✅ Returning 10 ranked results
+   🔑 Search query (keywords): 'remember talked history context metadata intent understanding conversation depth recent exercise challenge rowing'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 10
+   Keyword results: 0
+   Total candidates: 10
+   📌 Keeping high-similarity turn t_20251024_222545_af... (similarity=0.696) despite being in window
+   🔄 Deduplicated turns: 10 → 5 (5 skipped)
+   ✅ Window tracking: 17 turns in window, 0 recently seen
+✅ Retrieved context: 5 snippets, 4 sources
+      Retrieved: 5 contexts (before topic filtering)
+   🔍 Phase 4.1: Filtering by active topics...
+      Filtered: 5 → 2 contexts
+      Final context count: 2
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251027_202249_692.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251027_202249_692.txt
+   💧 Building contextualized prompt...
+
+💧 Building prompt...
+   📊 Token allocation:
+      System: 74 / 500
+      Tasks: 0 / 500
+      Window budget: 2955
+      Retrieved budget: 1970
+      📊 Window formatting complete: 4/4 turns included, 0 omitted, 508/2955 tokens used
+   ✅ Prompt built:
+      Total tokens: 769 / 6000
+      Window: 481 tokens
+      Retrieved: 193 tokens
+      User: 21 tokens
+      📏 Full prompt length: 3024 chars
+      📋 Sliding window: 4 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251027_202249_692.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: So far, in our recent conversations, we haven't discussed history yet. If you'd like, we can start a new discussion on any historical topic you're interested in! Just let me know what era, event, or figure you'd like to explore.
+   📝 Debug: LLM response logged to 05_llm_response_20251027_202249_692.txt
+   📝 Using inline metadata (LLM extraction disabled)...
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251027_202251_1ebaa3... (seq=1) to day 2025-10-27
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 5 turns
+   ✅ Turn logged: t_20251027_202251_1ebaa3
+   ⚠️ No keywords available for embedding
+   🎯 Phase 4.3: Applying adaptive compression...
+      📊 Sliding window has 5 turns - checking compression...
+      Compression decision: no_compression
+      Reason: Related topics (distance: 0.000)
+      ℹ️  No compression needed

@@ -1,0 +1,66 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-11-25 15:18:31
+Turn ID: turn_20251125_151829_110
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251125_151829_110.txt
+   🤖 Using GPT-4.1-nano keywords for retrieval: ['memory system', 'user profile glossary', 'HMLR', 'cognitive lattice', 'Blue Sky']
+   🔄 Active Span: span_20251125_151829_110750 (mentioned thing like)
+   🧹 Topic Shift Detected! Clearing sliding window for Tabula Rasa.
+   📝 Debug: User query logged to 01_user_query_20251125_151829_110.txt
+   🕸️  Lattice Retrieval: Fetching candidates...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['memory system', 'user profile glossary', 'HMLR', 'cognitive lattice', 'Blue Sky']
+   Primary Topics: ['Memory Systems', 'User Profile Documentation']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'memory system user profile glossary HMLR cognitive lattice B...'
+      Query keywords (15): ['memory', 'system', 'user', 'profile', 'glossary', 'HMLR', 'cognitive', 'lattice', 'Blue', 'Sky', 'Memory', 'Systems', 'User', 'Profile', 'Documentation']
+      Found 20 turns with keyword matches
+   🎯 Top matches:
+      1. score=14.00 | 6 kw matches | avg_sim=0.599 | memory retrieval mec, chat system...
+      2. score=12.27 | 5 kw matches | avg_sim=0.549 | human brain, electronic systems...
+      3. score=9.84 | 4 kw matches | avg_sim=0.490 | memory-retrieval tes, help...
+   ✅ Returning 20 ranked results
+   🔑 Search query (keywords): 'memory system user profile glossary HMLR cognitive lattice Blue Sky Memory Systems User Profile Documentation'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 20
+   Keyword results: 0
+   Total candidates: 20
+✅ Retrieved context: 20 snippets, 7 sources
+      Found 20 candidates
+   🏛️  The Governor: Filtering memories...
+🌐 Sending direct query to external API (model: gpt-4.1-nano)...
+      Governor approved 7/20 memories
+   💧 Hydrator: Building context...
+      Final context count: 7
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251125_151829_110.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251125_151829_110.txt
+   💧 Building contextualized prompt...
+❌ Chat API call failed: UserProfileManager.get_user_profile_context() got an unexpected keyword argument 'max_tokens'
+Traceback (most recent call last):
+  File "C:\Users\seanv\CognitiveLattice\core\conversation_engine.py", line 578, in _handle_chat
+    user_profile_context = self.user_profile_manager.get_user_profile_context(max_tokens=300)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: UserProfileManager.get_user_profile_context() got an unexpected keyword argument 'max_tokens'
+   ⚠️  Fallback keyword extraction: ['mentioned thing like', 'HMLR,', 'Blue Sky?', 'Sky?', 'memory system']
+   ⚠️  No topics provided
+   ⚠️  No affect provided, defaulting to neutral
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251125_151831_928072... (seq=0) to day 2025-11-25
+      🔑 Saved 27 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 1 turns
+   ✅ Turn logged: t_20251125_151831_928072
+   🔗 Linked turn t_20251125_151831_928072 to span span_20251125_151829_110750
+   🔍 Generating embeddings from 27 LLM-extracted keywords...
+   🔍 Generated 27 keyword embedding(s)
+⚠️ Failed to log turn to storage: 'ConversationEngine' object has no attribute 'previous_day'

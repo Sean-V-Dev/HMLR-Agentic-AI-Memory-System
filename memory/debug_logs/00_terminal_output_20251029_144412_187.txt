@@ -1,0 +1,126 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-10-29 14:44:15
+Turn ID: turn_20251029_144412_187
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251029_144412_187.txt
+   🔍 Step 1: Quick keyword extraction...
+      Quick keywords: ['interesting fact', 'tell', 'interesting', 'fact', 'mountains']
+   📚 Step 2: Retrieving recent context...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['interesting fact', 'tell', 'interesting', 'fact', 'mountains']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'interesting fact tell interesting fact mountains...'
+      Query keywords (6): ['interesting', 'fact', 'tell', 'interesting', 'fact', 'mountains']
+      Found 0 turns with keyword matches
+   ✅ Returning 0 ranked results
+   🔑 Search query (keywords): 'interesting fact tell interesting fact mountains'
+
+🔍 KEYWORD SEARCH (Fallback Method):
+   📝 Found 7 keyword matches
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 0
+   Keyword results: 7
+   Total candidates: 7
+   🔄 Deduplicated turns: 7 → 4 (3 skipped)
+   📊 Top 3 scores:
+      1. Score: 0.39 (kw: 0.40, topic: 0.00, 3 days ago)
+      2. Score: 0.39 (kw: 0.40, topic: 0.00, 3 days ago)
+      3. Score: 0.20 (kw: 0.20, topic: 0.00, 5 days ago)
+   ✅ Window tracking: 15 turns in window, 0 recently seen
+✅ Retrieved context: 3 snippets, 2 sources
+      Retrieved 3 recent contexts
+   🧠 Step 3: Analyzing intent WITH context...
+   📅 Phase 6.2: Analyzing with plan context (4 active plans)
+      Type: memory_query
+      Keywords: ['tell', 'interesting', 'fact', 'mountains', 'context']
+      Topics: ['problems', 'solve', 'list']
+   📝 Debug: User query logged to 01_user_query_20251029_144412_187.txt
+   🏷️  Phase 4.1: Using GPT-4o-nano topics...
+      Topics: ['Geography', 'Natural Wonders']
+   🔎 Step 4: Full context retrieval with refined intent...
+      Using plan-boosted retrieval (4 active plans)
+🔍 Crawler: Searching with intent:
+   Query Type: memory_query
+   Keywords: ['tell', 'interesting', 'fact', 'mountains', 'context', 'metadata', 'intent', 'understanding', 'previously', 'discussed']
+   Primary Topics: ['problems', 'solve', 'list']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'tell interesting fact mountains context metadata intent unde...'
+      Query keywords (13): ['tell', 'interesting', 'fact', 'mountains', 'context', 'metadata', 'intent', 'understanding', 'previously', 'discussed', 'problems', 'solve', 'list']
+      Found 15 turns with keyword matches
+   🎯 Top matches:
+      1. score=13.89 | 6 kw matches | avg_sim=0.530 | Conversation, Metadata...
+      2. score=5.33 | 2 kw matches | avg_sim=0.419 | History, History...
+      3. score=5.13 | 2 kw matches | avg_sim=0.455 | data structures, coding challenges...
+   ✅ Returning 10 ranked results
+   🔑 Search query (keywords): 'tell interesting fact mountains context metadata intent understanding previously discussed problems solve list'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 10
+   Keyword results: 0
+   Total candidates: 10
+   🔄 Deduplicated turns: 10 → 9 (1 skipped)
+   ✅ Window tracking: 20 turns in window, 0 recently seen
+✅ Retrieved context: 5 snippets, 4 sources
+      Retrieved: 5 contexts (before topic filtering)
+   🔍 Phase 4.1: Filtering by active topics...
+      Filtered: 5 → 1 contexts
+      Final context count: 1
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251029_144412_187.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251029_144412_187.txt
+   💧 Building contextualized prompt...
+
+💧 Building prompt...
+   📊 Token allocation:
+      System: 74 / 500
+      Tasks: 0 / 500
+      Window budget: 2955
+      Retrieved budget: 1970
+      📊 Window formatting complete: 13/13 turns included, 0 omitted, 1216/2955 tokens used
+   ✅ Prompt built:
+      Total tokens: 1257 / 6000
+      Window: 1106 tokens
+      Retrieved: 54 tokens
+      User: 23 tokens
+      📏 Full prompt length: 4978 chars
+      📋 Sliding window: 13 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251029_144412_187.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API (model: gpt-4.1-mini)...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: Certainly! Here's an interesting fact about mountains: Mountains can actually "grow" and change shape over time due to geological processes. For example, the Himalayas—the tallest mountain range in the world—are still rising at a rate of about 1 centimeter per year. This is because the Indian tectonic plate is slowly pushing northward into the Eurasian plate, causing the Earth's crust to buckle and form these towering peaks. So, mountains are not just static features; they're dynamic and constantly evolving! Would you like to learn more about a specific mountain or mountain range?
+   📝 Debug: LLM response logged to 05_llm_response_20251029_144412_187.txt
+   📝 Using GPT-4o-nano keywords (3): ['mountains', 'geography', 'interesting fact']
+   🏷️  Using GPT-4o-nano topics (2): ['Geography', 'Natural Wonders']
+   😊 Detected affect: curious
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251029_144415_0ae834... (seq=0) to day 2025-10-29
+      🔑 Saved 3 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 14 turns
+   ✅ Turn logged: t_20251029_144415_0ae834
+   🔍 Generating embeddings from 3 LLM-extracted keywords...
+   🔍 Generated 3 keyword embedding(s)
+   🎯 Phase 4.3: Applying adaptive compression...
+      📊 Sliding window has 14 turns - checking compression...
+      Compression decision: compress_partial
+      Reason: Somewhat different (dist: 0.717, gap: 0.0h)
+      ✅ Compressed 2 turns
+   💾 Saved sliding window state: 14 turns

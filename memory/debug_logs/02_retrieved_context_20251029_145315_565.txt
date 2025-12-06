@@ -1,0 +1,43 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-10-29 14:53:15
+Turn ID: turn_20251029_145315_565
+Search Method: vector
+================================================================================
+
+RETRIEVED 2 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Relevance Score: 13.885
+Turn ID: t_20251024_222545_af9ddb
+Day: 2025-10-24
+Timestamp: 2025-10-24 22:25:45.120878
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation....
+
+--- Snippet 2 ---
+Relevance Score: 5.497
+Turn ID: t_20251029_144415_0ae834
+Day: 2025-10-29
+Timestamp: 2025-10-29 14:44:15.408146
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you tell me an interesting fact about mountains?
+A: Certainly! Here's an interesting fact about mountains: Mountains can actually "grow" and change shape over time due to geological processes. ...
+
+SOURCES (5):
+--------------------------------------------------------------------------------
+  - 2025-10-29
+  - 2025-10-25
+  - 2025-10-24
+  - 2025-10-23
+  - 2025-10-21
+
+Estimated Tokens: 0
+Retrieved Turn IDs: t_20251024_222545_af9ddb, t_20251029_144415_0ae834, t_20251021_113433_ac2d1c, t_20251023_100223_919022, t_20251025_090407_858c47

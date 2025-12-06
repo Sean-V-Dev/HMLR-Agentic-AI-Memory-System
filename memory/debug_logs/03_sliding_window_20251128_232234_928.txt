@@ -1,0 +1,23 @@
+================================================================================
+SLIDING WINDOW (Recent Conversation Context)
+================================================================================
+Timestamp: 2025-11-28 23:22:36
+Turn ID: turn_20251128_232234_928
+================================================================================
+
+WINDOW SIZE: 1 / 20 turns
+
+TURNS IN WINDOW:
+--------------------------------------------------------------------------------
+
+--- Turn 1 ---
+Turn ID: t_20251128_231416_772dea
+Sequence: 0
+Timestamp: 2025-11-28T23:14:16.048750
+
+User: i work at Anthem as a claims analyst.
+
+Assistant: Got it! I've noted that you work at Anthem as a Claims Analyst. If you want, I can update your glossary or profile to include this role for easier reference in future conversations or for your custom memory system like HMLR. Would you like me to add it now?
+
+Keywords: claims analyst, Anthem
+

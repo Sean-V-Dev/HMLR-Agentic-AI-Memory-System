@@ -1,0 +1,16 @@
+================================================================================
+LLM RESPONSE
+================================================================================
+Timestamp: 2025-11-25 15:31:03
+Turn ID: turn_20251125_153101_236
+================================================================================
+
+RESPONSE METADATA:
+--------------------------------------------------------------------------------
+response_length_chars: 254
+citations_found: 0
+context_efficiency: N/A
+
+FULL RESPONSE:
+--------------------------------------------------------------------------------
+Yes, I have your glossary loaded with the projects HMLR and Cognitive Lattice, and the business Blue Sky. I also noted your preference for Python with async/await for coding style. How can I assist you with your memory system test or anything else today?

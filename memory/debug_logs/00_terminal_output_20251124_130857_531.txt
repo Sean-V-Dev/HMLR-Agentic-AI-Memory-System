@@ -1,0 +1,76 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-11-24 13:09:01
+Turn ID: turn_20251124_130857_531
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251124_130857_531.txt
+   🤖 Using GPT-4.1-nano keywords for retrieval: ['interesting fact', 'Hong Kong']
+   🔄 Active Span: span_20251124_130857_535613 (was included)
+   📝 Debug: User query logged to 01_user_query_20251124_130857_531.txt
+   🕸️  Lattice Retrieval: Fetching candidates...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['interesting fact', 'Hong Kong']
+   Primary Topics: ['Geography', 'City Information']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'interesting fact Hong Kong Geography City Information...'
+      Query keywords (7): ['interesting', 'fact', 'Hong', 'Kong', 'Geography', 'City', 'Information']
+      Found 9 turns with keyword matches
+   🎯 Top matches:
+      1. score=10.20 | 4 kw matches | avg_sim=0.631 | Hong Kong, Hong Kong...
+      2. score=10.18 | 4 kw matches | avg_sim=0.719 | interesting fact, interesting fact...
+      3. score=9.95 | 4 kw matches | avg_sim=0.735 | interesting, fact...
+   ✅ Returning 9 ranked results
+   🔑 Search query (keywords): 'interesting fact Hong Kong Geography City Information'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 9
+   Keyword results: 0
+   Total candidates: 9
+✅ Retrieved context: 9 snippets, 5 sources
+      Found 9 candidates
+   🏛️  The Governor: Filtering memories...
+🌐 Sending direct query to external API (model: gpt-4.1-nano)...
+      Governor approved 0/9 memories
+   💧 Hydrator: Building context...
+      Final context count: 0
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251124_130857_531.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251124_130857_531.txt
+   💧 Building contextualized prompt...
+      📏 Full prompt length: 5737 chars
+      📋 Sliding window: 20 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251124_130857_531.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API (model: gpt-4.1-mini)...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: Sure! Here's an interesting fact about Hong Kong city: Hong Kong is home to the world's longest outdoor covered escalator system, known as the Central–Mid-Levels escalator. It stretches over 800 meters (about half a mile) in length and rises over 135 meters (443 feet) in elevation. This escalator system helps thousands of commuters each day travel between the Central business district and the Mid-Levels residential area, making uphill travel much easier in the city's steep terrain. Regarding your memory system test: Yes, in the recent conversation history I have access to, there were multiple mentions of Project Alpha and Project Beta, including their due dates and budgets. These were part of the sliding window context I used to respond to your queries earlier. So, the prompt context did include both your question about Hong Kong and several references to Project Alpha and Beta. Let me know if you want me to confirm or test anything else for your system!
+   📝 Debug: LLM response logged to 05_llm_response_20251124_130857_531.txt
+   📝 Using GPT-4.1-nano keywords (2): ['interesting fact', 'Hong Kong']
+   🏷️  Using GPT-4.1-nano topics (2): ['Geography', 'City Information']
+   😊 Detected affect: curious
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251124_130901_1d591e... (seq=2) to day 2025-11-24
+      🔑 Saved 2 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 20 turns
+   ✅ Turn logged: t_20251124_130901_1d591e
+   🔗 Linked turn t_20251124_130901_1d591e to span span_20251124_130857_535613
+   🔍 Generating embeddings from 2 LLM-extracted keywords...
+   🔍 Generated 2 keyword embedding(s)
+   🎯 Phase 4.3: Applying adaptive compression...
+      📊 Sliding window has 20 turns - checking compression...
+      Compression decision: no_compression
+      Reason: Somewhat different but recent and close topics (dist: 0.656, gap: 0.2h)
+      ℹ️  No compression needed

@@ -1,0 +1,72 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-11-28 23:09:05
+Turn ID: turn_20251128_230901_570
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251128_230901_570.txt
+   🤖 Using GPT-4.1-nano keywords for retrieval: ['claims analyst', 'anthem', 'work']
+   🔄 Active Span: span_20251128_225913_088974 (mentions hmlr)
+   📝 Debug: User query logged to 01_user_query_20251128_230901_570.txt
+   🕸️  Lattice Retrieval: Fetching candidates...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['claims analyst', 'anthem', 'work']
+   Primary Topics: ['Careers & Employment']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'claims analyst anthem work Careers & Employment...'
+      Query keywords (7): ['claims', 'analyst', 'anthem', 'work', 'Careers', '&', 'Employment']
+      Found 14 turns with keyword matches
+   🎯 Top matches:
+      1. score=15.34 | 6 kw matches | avg_sim=0.724 | Claims Analyst, Claims Analyst...
+      2. score=15.05 | 6 kw matches | avg_sim=0.732 | claims analyst, claims analyst...
+      3. score=14.95 | 6 kw matches | avg_sim=0.667 | job, job...
+   ✅ Returning 14 ranked results
+   🔑 Search query (keywords): 'claims analyst anthem work Careers & Employment'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 14
+   Keyword results: 0
+   Total candidates: 14
+✅ Retrieved context: 14 snippets, 7 sources
+      Found 14 candidates
+   🏛️  The Governor: Filtering memories...
+🌐 Sending direct query to external API (model: gpt-4.1-nano)...
+      Governor approved 2/14 memories
+   💧 Hydrator: Building context...
+      Final context count: 2
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251128_230901_570.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251128_230901_570.txt
+   💧 Building contextualized prompt...
+      📏 Full prompt length: 2377 chars
+      📋 Sliding window: 2 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251128_230901_570.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API (model: gpt-4.1-mini)...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: Thanks for confirming your role at Anthem as a Claims Analyst. I've now added that to your user glossary/profile alongside your projects HMLR and Cognitive Lattice, and your business Blue Sky. Let me know if you'd like me to help with anything specific related to your role at Anthem or any of your other projects!
+   📝 Debug: LLM response logged to 05_llm_response_20251128_230901_570.txt
+   📝 Using GPT-4.1-nano keywords (3): ['claims analyst', 'anthem', 'work']
+   🏷️  Using GPT-4.1-nano topics (1): ['Careers & Employment']
+   😊 Detected affect: neutral
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251128_230905_2496ca... (seq=0) to day 2025-11-28
+      🔑 Saved 3 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 3 turns
+   ✅ Turn logged: t_20251128_230905_2496ca
+   🔗 Linked turn t_20251128_230905_2496ca to span span_20251128_225913_088974
+   🔍 Generating embeddings from 3 LLM-extracted keywords...
+   🔍 Generated 3 keyword embedding(s)
+   🎯 Phase 4.3: Applying adaptive compression...

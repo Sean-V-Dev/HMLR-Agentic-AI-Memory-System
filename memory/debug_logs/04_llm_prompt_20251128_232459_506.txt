@@ -1,0 +1,61 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-28 23:25:00
+Turn ID: turn_20251128_232459_506
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 3
+retrieved_contexts: 3
+retrieved_sources: 1
+prompt_length_chars: 4980
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+<user_glossary>
+  [Projects]
+  - HMLR: Hierarchical Memory & Lattice Retrieval. A custom memory system using RAG and 'The Governor'. (AI / Software Architecture) [Active]
+  - Cognitive Lattice: The overarching personal AI project that HMLR supports. (AI Architecture) [Active]
+  [Entities]
+  - Blue Sky: User's cleaning business. (Business)
+  - Anthem:  (Business)
+  [Constraints]
+  - Coding Style: Prefer Python over JS. Use async/await patterns.
+</user_glossary>
+
+### Relevant Past Memories:
+[2025-11-24 12:52] [ref:t_20251124_125256_24df72]
+User: Hey, can you tell me something interesting about a mountain in china
+AI: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+[2025-11-24 12:55] [ref:t_20251124_125535_0fbccf]
+User: im not from that part of the world, can you give me a way to estimate how far it is from like hong kong or something like that, that i would know from china?
+AI: Absolutely! To estimate how far Huangshan is from Hong Kong, you can consider the approximate straight-line (as-the-crow-flies) distance between the two locations. - Hong Kong is in the southern part of China, near the coast. - Huangshan is in Anhui Province, which is more inland and to the northeast of Hong Kong. The straight-line distance from Hong Kong to Huangshan is roughly around 800 to 900 kilometers (about 500 to 560 miles). For a rough travel time context: - By air, a direct flight might take about 1.5 to 2 hours (if there were direct flights). - By train or car, it would be considerably longer, likely 8 to 12 hours depending on the route and mode of transport. If you'd like, I can also help you with estimating distances from Hong Kong to other places in China or suggest ways to calculate distances using online tools or maps!
+
+[2025-11-25 15:18] [ref:t_20251125_151831_928072]
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+
+
+
+### Recent Conversation:
+User: i work at Anthem as a claims analyst.
+AI: Got it! I've noted that you work at Anthem as a Claims Analyst. If you want, I can update your glossary or profile to include this role for easier reference in future conversations or for your custom memory system like HMLR. Would you like me to add it now?
+
+User: i work at Anthem as a claims analyst.
+AI: Thanks for confirming again that you work at Anthem as a Claims Analyst. I've made sure this is saved in your profile and glossary for future reference alongside your projects HMLR, Cognitive Lattice, and your Blue Sky business. If you want, I can help with anything related to your role at Anthem—like workflow optimization, data analysis, or automating routine tasks—or assist with your AI projects or business. Just let me know!
+
+User: can you tell me something about a mountain in india?
+AI: Certainly! One of the most famous mountains in India is **Kangchenjunga**. It is the third highest mountain in the world, standing at 8,586 meters (28,169 feet) above sea level. Kangchenjunga is located in the eastern Himalayas, on the border between the Indian state of Sikkim and Nepal. Kangchenjunga is revered in local culture and considered sacred by the people of Sikkim. The mountain's name means “The Five Treasures of Snows,” referring to its five prominent peaks, which are believed to hold gold, silver, gems, grain, and holy books. If you'd like, I can provide information on other mountains in India or specific details related to geography, trekking, or cultural significance. Just let me know!
+
+
+User: can you tell me more about the five treasures of snows

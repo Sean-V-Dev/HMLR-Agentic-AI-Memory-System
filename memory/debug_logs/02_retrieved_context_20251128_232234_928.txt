@@ -1,0 +1,40 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-28 23:22:36
+Turn ID: turn_20251128_232234_928
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 3 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251128_230452_3086a3
+Timestamp: 2025-11-28 23:04:52.137337
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: i work at anthem as a claims analyst.
+Assistant: Got it—I've noted that you work at Anthem as a Claims Analyst. Would you like me to update your user glossary/profile to include this role for future reference? This way, I can keep it in mind alongside your projects like HMLR, Cognitive Lattice, and your Blue Sky business.
+
+--- Snippet 2 ---
+Turn ID: t_20251128_230905_2496ca
+Timestamp: 2025-11-28 23:09:05.054631
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: i work at anthem as a claims analyst.
+Assistant: Thanks for confirming your role at Anthem as a Claims Analyst. I've now added that to your user glossary/profile alongside your projects HMLR and Cognitive Lattice, and your business Blue Sky. Let me know if you'd like me to help with anything specific related to your role at Anthem or any of your other projects!
+
+--- Snippet 3 ---
+Turn ID: t_20251128_231416_772dea
+Timestamp: 2025-11-28 23:14:16.048750
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: i work at Anthem as a claims analyst.
+Assistant: Got it! I've noted that you work at Anthem as a Claims Analyst. If you want, I can update your glossary or profile to include this role for easier reference in future conversations or for your custom memory system like HMLR. Would you like me to add it now?
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

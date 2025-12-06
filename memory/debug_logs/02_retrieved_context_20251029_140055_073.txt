@@ -1,0 +1,41 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-10-29 14:00:55
+Turn ID: turn_20251029_140055_073
+Search Method: vector
+================================================================================
+
+RETRIEVED 2 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Relevance Score: 9.472
+Turn ID: t_20251024_222545_af9ddb
+Day: 2025-10-24
+Timestamp: 2025-10-24 22:25:45.120878
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation....
+
+--- Snippet 2 ---
+Relevance Score: 3.039
+Turn ID: t_20251021_125004_8deb9b
+Day: 2025-10-21
+Timestamp: 2025-10-21 12:50:04.641920
+All Keys: ['turn_id', 'day_id', 'timestamp', 'context', 'relevance_score', 'match_type', 'similarity', 'matched_chunk', 'detail_level', 'keyword_matches', 'matched_keywords', 'plan_boosted']
+
+Context:
+Q: can you pick any random topic that you havent told me about before and give me a brief overview?
+Summary: Assistant explained bioluminescence, a natural phenomenon where living organisms produce an...
+
+SOURCES (3):
+--------------------------------------------------------------------------------
+  - 2025-10-24
+  - 2025-10-23
+  - 2025-10-21
+
+Estimated Tokens: 0
+Retrieved Turn IDs: t_20251024_222545_af9ddb, t_20251021_114337_db8ddd, t_20251023_100223_919022, t_20251021_124326_e59ba0, t_20251021_125004_8deb9b

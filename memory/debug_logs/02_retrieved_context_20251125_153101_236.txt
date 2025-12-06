@@ -1,0 +1,24 @@
+================================================================================
+RETRIEVED CONTEXT (What Was Hydrated)
+================================================================================
+Timestamp: 2025-11-25 15:31:02
+Turn ID: turn_20251125_153101_236
+Search Method: lattice_governor
+================================================================================
+
+RETRIEVED 1 CONTEXT SNIPPET(S):
+--------------------------------------------------------------------------------
+
+--- Snippet 1 ---
+Turn ID: t_20251125_151831_928072
+Timestamp: 2025-11-25 15:18:31.151261
+All Keys: ['turn_id', 'user_message', 'assistant_response', 'timestamp', 'similarity']
+
+User: Im testing a memory system, as part of your prompt, other than this one, did you receive a user profile glossary that mentioned thing like HMLR, cognitive lattice, and Blue Sky?
+Assistant: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+SOURCES (1):
+--------------------------------------------------------------------------------
+  - HMLR_Lattice_Governor
+
+Estimated Tokens: 0

@@ -1,0 +1,22 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-10-28 19:58:02
+Turn ID: turn_20251028_195801_853
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: task_request
+Confidence: 0.90
+Keywords: able, tell, active, plans, dont, fine, report, dont, access, testing
+Primary Topics: practice, 7-Day Progressive Rowing Plan, week
+Raw Query (for vector search): are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+
+[Context metadata for intent understanding:
+Conversation depth: 8 recent turns
+]

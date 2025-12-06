@@ -1,0 +1,73 @@
+================================================================================
+TERMINAL OUTPUT FOR THIS TURN
+================================================================================
+Timestamp: 2025-11-25 15:24:15
+Turn ID: turn_20251125_152412_259
+================================================================================
+
+   📝 Debug: User query logged to 01_user_query_20251125_152412_259.txt
+   🤖 Using GPT-4.1-nano keywords for retrieval: ['Claims Analyst', 'Anthem', 'profile update', 'job information']
+   🔄 Active Span: span_20251125_152412_278332 (is supposed to)
+   🧹 Topic Shift Detected! Clearing sliding window for Tabula Rasa.
+   📝 Debug: User query logged to 01_user_query_20251125_152412_259.txt
+   🕸️  Lattice Retrieval: Fetching candidates...
+🔍 Crawler: Searching with intent:
+   Query Type: chat
+   Keywords: ['Claims Analyst', 'Anthem', 'profile update', 'job information']
+   Primary Topics: ['Career Development', 'Workplace Procedures']
+📋 Found 0 active tasks
+📅 Search range: ALL DAYS (unlimited)
+
+🔍 VECTOR SEARCH (Primary Method):
+   🔍 Ranked multi-keyword search: 'Claims Analyst Anthem profile update job information Career ...'
+      Query keywords (11): ['Claims', 'Analyst', 'Anthem', 'profile', 'update', 'job', 'information', 'Career', 'Development', 'Workplace', 'Procedures']
+      Found 16 turns with keyword matches
+   🎯 Top matches:
+      1. score=14.40 | 6 kw matches | avg_sim=0.467 | Assistant, Help...
+      2. score=13.40 | 6 kw matches | avg_sim=0.532 | part, profile...
+      3. score=11.77 | 5 kw matches | avg_sim=0.514 | developer, developer...
+   ✅ Returning 16 ranked results
+   🔑 Search query (keywords): 'Claims Analyst Anthem profile update job information Career Development Workplace Procedures'
+   ✅ Vector search successful, skipping keyword search
+
+📊 SEARCH RESULTS SUMMARY:
+   Vector results: 16
+   Keyword results: 0
+   Total candidates: 16
+✅ Retrieved context: 16 snippets, 6 sources
+      Found 16 candidates
+   🏛️  The Governor: Filtering memories...
+🌐 Sending direct query to external API (model: gpt-4.1-nano)...
+      Governor approved 2/16 memories
+   💧 Hydrator: Building context...
+      Final context count: 2
+   📝 Debug: Retrieved context logged to 02_retrieved_context_20251125_152412_259.txt
+   📝 Debug: Sliding window logged to 03_sliding_window_20251125_152412_259.txt
+   💧 Building contextualized prompt...
+      📏 Full prompt length: 1931 chars
+      📋 Sliding window: 0 turns
+   📝 Debug: Full prompt logged to 04_llm_prompt_20251125_152412_259.txt
+   🤖 Calling LLM with context...
+🌐 Sending direct query to external API (model: gpt-4.1-mini)...
+✅ Chat response received
+   📊 Phase 4.1: Analyzing context usage...
+      Citations found: 0
+      Turn IDs used: set()
+      Context efficiency: 0.0%
+
+💬 Response: Understood. I've noted that you have a job at Anthem as a Claims Analyst for the purpose of the Scribe updating your profile. I will wait for your next prompt to confirm if this information appears correctly. Let me know how you want to proceed.
+   📝 Debug: LLM response logged to 05_llm_response_20251125_152412_259.txt
+   📝 Using GPT-4.1-nano keywords (4): ['Claims Analyst', 'Anthem', 'profile update', 'job information']
+   🏷️  Using GPT-4.1-nano topics (2): ['Career Development', 'Workplace Procedures']
+   😊 Detected affect: neutral
+   💾 Logging turn to storage...
+   💾 Logged turn t_20251125_152415_6f6e70... (seq=1) to day 2025-11-25
+      🔑 Saved 4 keywords with lineage
+      😊 Saved affect with lineage
+   📋 Adding to sliding window...
+   💾 Saved sliding window state: 1 turns
+   ✅ Turn logged: t_20251125_152415_6f6e70
+   🔗 Linked turn t_20251125_152415_6f6e70 to span span_20251125_152412_278332
+   🔍 Generating embeddings from 4 LLM-extracted keywords...
+   🔍 Generated 4 keyword embedding(s)
+   🎯 Phase 4.3: Applying adaptive compression...

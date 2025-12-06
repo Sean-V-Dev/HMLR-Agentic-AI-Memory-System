@@ -1,0 +1,16 @@
+================================================================================
+LLM RESPONSE
+================================================================================
+Timestamp: 2025-10-28 19:58:04
+Turn ID: turn_20251028_195801_853
+================================================================================
+
+RESPONSE METADATA:
+--------------------------------------------------------------------------------
+response_length_chars: 347
+citations_found: 0
+context_efficiency: N/A
+
+FULL RESPONSE:
+--------------------------------------------------------------------------------
+I do have access to your active plans from our recent conversations. Currently, you have these active plans: - 7-Day Walking Plan (2025-10-29 to 2025-11-04) - 2-Week LeetCode Practice Plan (2025-10-29 to 2025-11-11) - 7-Day Progressive Rowing Plan (2025-11-03 to 2025-11-09) If you want, I can provide more details or help you manage any of these!

@@ -1,0 +1,16 @@
+================================================================================
+LLM RESPONSE
+================================================================================
+Timestamp: 2025-11-28 23:24:14
+Turn ID: turn_20251128_232410_469
+================================================================================
+
+RESPONSE METADATA:
+--------------------------------------------------------------------------------
+response_length_chars: 708
+citations_found: 0
+context_efficiency: N/A
+
+FULL RESPONSE:
+--------------------------------------------------------------------------------
+Certainly! One of the most famous mountains in India is **Kangchenjunga**. It is the third highest mountain in the world, standing at 8,586 meters (28,169 feet) above sea level. Kangchenjunga is located in the eastern Himalayas, on the border between the Indian state of Sikkim and Nepal. Kangchenjunga is revered in local culture and considered sacred by the people of Sikkim. The mountain's name means “The Five Treasures of Snows,” referring to its five prominent peaks, which are believed to hold gold, silver, gems, grain, and holy books. If you'd like, I can provide information on other mountains in India or specific details related to geography, trekking, or cultural significance. Just let me know!

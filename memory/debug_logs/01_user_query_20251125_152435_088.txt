@@ -1,0 +1,18 @@
+================================================================================
+USER QUERY AND INTENT ANALYSIS
+================================================================================
+Timestamp: 2025-11-25 15:24:35
+Turn ID: turn_20251125_152435_088
+================================================================================
+
+USER QUERY:
+--------------------------------------------------------------------------------
+Did the new glossary show that i have a job at anthem?
+
+INTENT ANALYSIS:
+--------------------------------------------------------------------------------
+Query Type: chat
+Confidence: 0.95
+Keywords: glossary, job, anthem
+Primary Topics: Employment, Personal Information
+Raw Query (for vector search): Did the new glossary show that i have a job at anthem?

@@ -1,0 +1,72 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-10-29 14:00:55
+Turn ID: turn_20251029_140055_073
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 10
+retrieved_contexts: 2
+retrieved_sources: 3
+prompt_length_chars: 5140
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+=== RECENT CONVERSATION ===
+
+User: Hello, how are you?
+Assistant: Hello! I'm doing well, thank you. How can I assist you today?
+
+User: can you remember what you told me about leetcode?
+Assistant: Yes! Earlier today, I shared some advice about getting started with LeetCode, especially for someone new to coding. Here's a quick summary of what I mentioned: - **Learn a programming language well:** Choose one commonly used on LeetCode, like Python, Java, or C++, and get comfortable with its syntax and basic features. - **Understand fundamentals:** Focus on key data structures (arrays, linked lists, trees, hash maps) and algorithms (sorting, searching, recursion). - **Practice consistently:** Solve problems regularly, starting with easy ones and gradually moving to medium and hard difficulties. - **Study problem patterns:** Over time, recognize common problem types and techniques (two pointers, sliding window, dynamic programming). - **Use resources:** Leverage online tutorials, discussion forums, and solutions to learn different approaches. If you'd like, I can help you create a step-by-step plan or recommend some beginner-friendly LeetCode problems to start with!
+
+User: hello
+Assistant: Hello again! How can I assist you today? Would you like to continue talking about LeetCode, coding, or something else?
+
+User: can you tell me an interesting science fact
+Assistant: Sure! Here's an interesting science fact: Did you know that water can exist in all three states of matter—solid, liquid, and gas—at the same time? This is called the **triple point** of water. It occurs at a very specific temperature and pressure (0.01°C and 611.657 pascals). At this point, ice, liquid water, and water vapor coexist in equilibrium. This phenomenon is used to calibrate thermometers because it's such a precise and reproducible condition! Would you like to hear another science fact or learn more about this one?
+
+User: can you remember what we talked about history?
+Assistant: So far, in our recent conversations, we haven't discussed history yet. If you'd like, we can start a new discussion on any historical topic you're interested in! Just let me know what era, event, or figure you'd like to explore.
+
+User: help me make a plan to walk for 7 days
+Assistant: Created a new plan: '7-Day Walking Plan' with 7 tasks from 2025-10-29 to 2025-11-04.
+
+User: can you help me create a 2 week plan for practicing leetcode problems?
+Assistant: Created a new plan: '2-Week LeetCode Practice Plan' with 25 tasks from 2025-10-29 to 2025-11-11.
+
+User: Can you help me create a plan to row for 7 days, starting next Monday on the third of november. I have a rowing machine at home. I know *how* to row but im out of practice so i need to start slow. start with just 10 minute sessions, i want to do them at noon.
+Assistant: Created a new plan: '7-Day Progressive Rowing Plan' with 7 tasks from 2025-11-03 to 2025-11-09.
+
+User: are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+Assistant: I do have access to your active plans from our recent conversations. Currently, you have these active plans: - 7-Day Walking Plan (2025-10-29 to 2025-11-04) - 2-Week LeetCode Practice Plan (2025-10-29 to 2025-11-11) - 7-Day Progressive Rowing Plan (2025-11-03 to 2025-11-09) If you want, I can provide more details or help you manage any of these!
+
+User: can you recall what you told me about quantum entanglement before? its ok if you cant i am testing a system
+Assistant: Yes, I can recall what I told you about quantum entanglement from earlier today. Here's a brief summary: Quantum entanglement is a phenomenon in quantum physics where two or more particles become linked such that the state of one particle instantly influences the state of the other(s), no matter how far apart they are. This connection happens instantly, defying classical ideas of communication limited by the speed of light. Entangled particles share a combined quantum state, and measuring one immediately determines the state of the other(s). This phenomenon has important implications for quantum computing, cryptography, and fundamental physics. Let me know if you'd like me to go into more detail or if you want to explore related topics!
+
+=== RELEVANT HISTORY ===
+Retrieved relevant conversations:
+
+1. [today] (score: 9.47)
+   Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation.
+
+2. [today] (score: 3.04)
+   Q: can you pick any random topic that you havent told me about before and give me a brief overview?
+Summary: Assistant explained bioluminescence, a natural phenomenon where living organisms produce and emit light through a chemical reaction involving luciferase and luciferin.
+
+
+=== CURRENT MESSAGE ===
+User: can you tell me an interesting fact about the ocean
+

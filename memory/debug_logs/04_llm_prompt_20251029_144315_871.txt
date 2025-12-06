@@ -1,0 +1,90 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-10-29 14:43:16
+Turn ID: turn_20251029_144315_871
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 12
+retrieved_contexts: 5
+retrieved_sources: 3
+prompt_length_chars: 6233
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+=== RECENT CONVERSATION ===
+
+User: Hello, how are you?
+Assistant: [Compressed] Summary unavailable
+
+User: can you remember what you told me about leetcode?
+Assistant: [Compressed] Summary unavailable
+
+User: hello
+Assistant: Hello again! How can I assist you today? Would you like to continue talking about LeetCode, coding, or something else?
+
+User: can you tell me an interesting science fact
+Assistant: Sure! Here's an interesting science fact: Did you know that water can exist in all three states of matter—solid, liquid, and gas—at the same time? This is called the **triple point** of water. It occurs at a very specific temperature and pressure (0.01°C and 611.657 pascals). At this point, ice, liquid water, and water vapor coexist in equilibrium. This phenomenon is used to calibrate thermometers because it's such a precise and reproducible condition! Would you like to hear another science fact or learn more about this one?
+
+User: can you remember what we talked about history?
+Assistant: So far, in our recent conversations, we haven't discussed history yet. If you'd like, we can start a new discussion on any historical topic you're interested in! Just let me know what era, event, or figure you'd like to explore.
+
+User: help me make a plan to walk for 7 days
+Assistant: Created a new plan: '7-Day Walking Plan' with 7 tasks from 2025-10-29 to 2025-11-04.
+
+User: can you help me create a 2 week plan for practicing leetcode problems?
+Assistant: Created a new plan: '2-Week LeetCode Practice Plan' with 25 tasks from 2025-10-29 to 2025-11-11.
+
+User: Can you help me create a plan to row for 7 days, starting next Monday on the third of november. I have a rowing machine at home. I know *how* to row but im out of practice so i need to start slow. start with just 10 minute sessions, i want to do them at noon.
+Assistant: Created a new plan: '7-Day Progressive Rowing Plan' with 7 tasks from 2025-11-03 to 2025-11-09.
+
+User: are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+Assistant: I do have access to your active plans from our recent conversations. Currently, you have these active plans: - 7-Day Walking Plan (2025-10-29 to 2025-11-04) - 2-Week LeetCode Practice Plan (2025-10-29 to 2025-11-11) - 7-Day Progressive Rowing Plan (2025-11-03 to 2025-11-09) If you want, I can provide more details or help you manage any of these!
+
+User: can you recall what you told me about quantum entanglement before? its ok if you cant i am testing a system
+Assistant: Yes, I can recall what I told you about quantum entanglement from earlier today. Here's a brief summary: Quantum entanglement is a phenomenon in quantum physics where two or more particles become linked such that the state of one particle instantly influences the state of the other(s), no matter how far apart they are. This connection happens instantly, defying classical ideas of communication limited by the speed of light. Entangled particles share a combined quantum state, and measuring one immediately determines the state of the other(s). This phenomenon has important implications for quantum computing, cryptography, and fundamental physics. Let me know if you'd like me to go into more detail or if you want to explore related topics!
+
+User: can you tell me an interesting fact about the ocean
+Assistant: Certainly! Here's an interesting fact about the ocean: The ocean is home to the largest living structure on Earth—the Great Barrier Reef. Stretching over 2,300 kilometers (about 1,430 miles) along the coast of Australia, it's so big that it can be seen from space! The reef is made up of billions of tiny coral polyps and supports an incredible diversity of marine life, including over 1,500 species of fish, 400 kinds of coral, and many other creatures. It's often called the "rainforest of the sea" because of its rich biodiversity. Would you like to hear more ocean facts or learn about a specific ocean-related topic?
+
+User: can you recall a time you advised me about coding interview tips? its ok to report no if you cant, im testing a system.
+Assistant: I have not yet advised you specifically about coding interview tips in our recent conversations. If you'd like, I can certainly provide you with some tailored advice on coding interviews now! Just let me know.
+
+=== RELEVANT HISTORY ===
+Retrieved relevant conversations:
+
+1. [today] (score: 13.79)
+   Q: hello
+Summary: The assistant greets the user and offers assistance in extracting metadata from a conversation.
+
+2. [today] (score: 5.33)
+   Q: can you give me a brief overview of the history of the roman empire
+Summary: The assistant provided a brief overview of the Roman Empire's history, starting with Augustus and covering key periods like the Principate and Pax Romana.
+
+3. [today] (score: 5.09)
+   Q: i know you just reminded me, sorry this is a test of a different system not you, but can you remind me of what you told me about leetcode again?
+Summary: Assisted user in getting started with LeetCode by emphasizing the importance of learning a programming language, understanding fundamentals, and practicing consistently.
+
+4. [today] (score: 5.06)
+   Q: can you tell me how to grow tomatoes
+Summary: The assistant provided a comprehensive guide on how to grow tomatoes, covering topics like choosing the right variety, preparing soil, and providing sunlight.
+
+5. [today] (score: 4.96)
+   Q: i know this is the third time i asked about leetcode, im the developer of the cognitive lattice that you see the rest of the prompt for besides just this user facing one, im testing the memory retrieval mechanism. So, can you remind me again of what you have told me about leetcode please.
+Summary: The assistant provided a consolidated reminder about LeetCode, emphasizing the importance of learning a programming language and mastering fundamentals like data structures and algorithms.
+
+
+=== CURRENT MESSAGE ===
+User: test query
+

@@ -1,0 +1,95 @@
+================================================================================
+FULL PROMPT SENT TO LLM
+================================================================================
+Timestamp: 2025-11-24 12:55:31
+Turn ID: turn_20251124_125530_617
+================================================================================
+
+CONTEXT SUMMARY:
+--------------------------------------------------------------------------------
+sliding_window_turns: 20
+retrieved_contexts: 1
+retrieved_sources: 1
+prompt_length_chars: 6165
+
+FULL PROMPT:
+--------------------------------------------------------------------------------
+You are CognitiveLattice, an AI assistant with long-term memory.
+You have access to recent conversation history and relevant past conversations.
+Use this context to provide informed, personalized responses that reference past discussions when relevant.
+
+
+
+
+
+### Relevant Past Memories:
+[2025-11-24 12:52] [ref:t_20251124_125256_24df72]
+User: Hey, can you tell me something interesting about a mountain in china
+AI: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+
+
+
+### Recent Conversation:
+User: Can you help me create a plan to row for 7 days, starting next Monday on the third of november. I have a rowing machine at home. I know *how* to row but im out of practice so i need to start slow. start with just 10 minute sessions, i want to do them at noon.
+AI: Created a new plan: '7-Day Progressive Rowing Plan' with 7 tasks from 2025-11-03 to 2025-11-09.
+
+User: are you able to tell if i have any active plans? if you dont its fine just report you dont have access, im testing something
+AI: I do have access to your active plans from our recent conversations. Currently, you have these active plans: - 7-Day Walking Plan (2025-10-29 to 2025-11-04) - 2-Week LeetCode Practice Plan (2025-10-29 to 2025-11-11) - 7-Day Progressive Rowing Plan (2025-11-03 to 2025-11-09) If you want, I can provide more details or help you manage any of these!
+
+User: hello
+AI: Hello! How can I assist you today? Would you like to continue with any of your active plans, talk about LeetCode, or something else?
+
+User: can you tell something about a random mountain in china
+AI: Sure! Here's something interesting about Mount Tai (泰山), one of the most famous mountains in China: Mount Tai is located in Shandong Province and is considered one of the "Five Great Mountains" of China. It holds great cultural and historical significance, having been a place of worship for over 3,000 years. Emperors of various dynasties would perform rituals and offer sacrifices at Mount Tai to pray for peace and prosperity. Geologically, Mount Tai is a massive granite mountain with an elevation of about 1,545 meters (5,069 feet). It features numerous ancient temples, stone inscriptions, and scenic cliffs. One of the famous spots on the mountain is the "Heavenly Candle Peak," which resembles a burning candle. Mount Tai is also a UNESCO World Heritage Site, recognized for both its natural beauty and cultural importance. Would you like to hear about another mountain in China or more details about Mount Tai?
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: I'm here to chat, but I'm having trouble connecting to my chat system right now.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: When is Project Alpha due?
+AI: Project Alpha is due on Friday.
+
+User: What is the budget for Project Beta?
+AI: Project Beta has a budget of $50k.
+
+User: Remind me when Alpha is due?
+AI: The deadline for Project Alpha is Friday, as mentioned earlier.
+
+User: Hey, can you tell me something interesting about a mountain in china
+AI: Of course! Let me tell you about Huangshan (黄山), also known as the Yellow Mountains, one of China's most famous and picturesque mountain ranges. Huangshan is located in Anhui Province and is renowned for its stunning scenery, including dramatic granite peaks, ancient pine trees, hot springs, and sea of clouds. It has inspired countless Chinese painters and poets throughout history. The mountain range features over 70 peaks, with the highest, Lotus Peak, reaching about 1,864 meters (6,115 feet). One of the distinctive features of Huangshan is its "Four Wonders": the oddly-shaped granite peaks, the gnarled pine trees that cling to cliffs, the sea of clouds that often envelops the mountains, and the hot springs at the foot of the range. Huangshan is also a UNESCO World Heritage Site due to its exceptional natural beauty and cultural significance. It's a popular destination for hiking and photography, especially during sunrise and sunset when the landscape appears magical. Would you like to know about another mountain in China or more about Huangshan?
+
+
+User: im not from that part of the world, can you give me a way to estimate how far it is from like hong kong or something like that, that i would know from china?
