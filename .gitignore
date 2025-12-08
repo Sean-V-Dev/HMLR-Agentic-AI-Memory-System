@@ -253,3 +253,40 @@ CognitiveLattice_E2E_Acceptance_Suite_Tests/
 
 #docs in the memory folder
 memory/docs/*
+
+# ===================================================================
+# HMLR PACKAGE-SPECIFIC (Added during packaging refactor)
+# ===================================================================
+
+# User-specific configs (NEVER commit personal data or API keys)
+config/user_profile_lite.json
+config/key.json
+
+# Debug logs (user-specific output)
+memory/debug_logs/
+memory/debug_logs/*.log
+
+# Test databases (user-specific test data)
+*.db
+*.sqlite
+*.sqlite3
+test_*.db
+
+# RAGAS results (keep in repo but mark as optional)
+# ragas_results/
+
+# Phoenix telemetry storage (user-specific)
+phoenix_storage/
+
+# Packaging build artifacts
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Test output files
+test_output/
+*_output.md
+
+# Temporary packaging files
+packaging_plan.md
