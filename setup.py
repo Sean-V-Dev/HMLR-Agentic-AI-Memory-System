@@ -95,7 +95,7 @@ setup(
         "bridge-blocks",
         "hierarchical-memory",
         "openai",
-        "gpt-4o-mini",
+        "gpt-4.1-mini",
     ],
     zip_safe=False,
 )
