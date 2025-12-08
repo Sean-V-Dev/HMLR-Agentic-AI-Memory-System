@@ -14,7 +14,6 @@ from core.telemetry import get_tracer
 
 from core.models import ConversationResponse, ResponseStatus
 from memory.models import Intent, QueryType
-from memory.debug_logger import MemoryDebugLogger
 from memory.retrieval.lattice import LatticeRetrieval, TheGovernor
 from memory.retrieval.hmlr_hydrator import Hydrator
 from memory.tabula_rasa import TabulaRasa
@@ -49,7 +48,6 @@ class ConversationEngine:
         scribe,
         chunk_engine,
         fact_scrubber,
-        debug_logger,
         embedding_storage,
         previous_day=None
     ):
@@ -72,7 +70,6 @@ class ConversationEngine:
             scribe: Scribe instance
             chunk_engine: ChunkEngine instance
             fact_scrubber: FactScrubber instance
-            debug_logger: MemoryDebugLogger instance
             embedding_storage: EmbeddingStorage instance
             previous_day: Optional[str] ID of the previous day
         """
@@ -92,7 +89,6 @@ class ConversationEngine:
         self.scribe = scribe
         self.chunk_engine = chunk_engine
         self.fact_scrubber = fact_scrubber
-        self.debug_logger = debug_logger
         self.embedding_storage = embedding_storage
         self.previous_day = previous_day
         

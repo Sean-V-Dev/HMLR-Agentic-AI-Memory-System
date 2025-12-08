@@ -14,7 +14,6 @@ from typing import Optional
 from memory import Storage
 from memory.conversation_manager import ConversationManager
 from memory.models import SlidingWindow
-from memory.debug_logger import MemoryDebugLogger
 from memory.metadata_extractor import LLMMetadataExtractor
 from memory.embeddings.embedding_manager import EmbeddingManager, EmbeddingStorage
 from memory.retrieval.intent_analyzer import IntentAnalyzer
@@ -64,7 +63,6 @@ class ComponentBundle:
     fact_scrubber: Optional[FactScrubber]
     
     # Utilities
-    debug_logger: MemoryDebugLogger
     metadata_extractor: LLMMetadataExtractor
     embedding_storage: EmbeddingStorage
     
@@ -232,7 +230,6 @@ class ComponentFactory:
             scribe=scribe,
             chunk_engine=chunk_engine,
             fact_scrubber=fact_scrubber,
-            debug_logger=debug_logger,
             metadata_extractor=metadata_extractor,
             embedding_storage=embedding_storage,
             previous_day=previous_day
@@ -272,7 +269,6 @@ class ComponentFactory:
             scribe=components.scribe,
             chunk_engine=components.chunk_engine,
             fact_scrubber=components.fact_scrubber,
-            debug_logger=components.debug_logger,
             embedding_storage=components.embedding_storage,
             previous_day=components.previous_day
         )
