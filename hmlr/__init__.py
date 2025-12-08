@@ -5,9 +5,9 @@ A memory system for AI agents with:
 - Bridge block architecture for topic segmentation
 - Fact extraction and storage  
 - Hierarchical retrieval (sentence → paragraph → block)
-- GPT-4o-mini optimized
+- GPT-4.1-mini optimized
 
-WARNING: This package has ONLY been tested with GPT-4o-mini.
+WARNING: This package has ONLY been tested with GPT-4.1-mini.
 Other models may produce incorrect results or fail completely.
 
 Example:

@@ -23,7 +23,7 @@ async def main():
     client = HMLRClient(
         api_key=api_key,
         db_path="example_memory.db",
-        model="gpt-4o-mini"  # ONLY tested model!
+        model="gpt-4.1-mini"  # ONLY tested model!
     )
     
     try:

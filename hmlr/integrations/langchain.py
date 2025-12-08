@@ -14,7 +14,7 @@ Example:
         db_path="memory.db"
     )
     
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatOpenAI(model="gpt-4.1-mini")
     chain = ConversationChain(llm=llm, memory=memory)
     
     response = chain.run("Hello!")
@@ -51,7 +51,7 @@ class HMLRMemory(BaseMemory):
         self,
         api_key: str,
         db_path: str = "hmlr_memory.db",
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4.1-mini",
         **kwargs
     ):
         """
@@ -60,7 +60,7 @@ class HMLRMemory(BaseMemory):
         Args:
             api_key: OpenAI API key
             db_path: Path to HMLR database
-            model: Model to use (default: gpt-4o-mini)
+            model: Model to use (default: gpt-4.1-mini)
             **kwargs: Additional HMLR client options
         """
         super().__init__()

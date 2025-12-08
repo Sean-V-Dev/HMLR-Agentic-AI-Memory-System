@@ -175,11 +175,11 @@ If no facts found, return: {{"facts": []}}
             # Call LLM for fact extraction using ExternalAPIClient
             prompt = self.EXTRACTION_PROMPT.format(message=message_text)
             
-            # Use GPT-4o-mini for fast, cheap extraction
+            # Use GPT-4.1-mini for fast, cheap extraction
             # ExternalAPIClient.query_external_api returns the content string directly
             response_content = self.api_client.query_external_api(
                 query=prompt,
-                model="gpt-4o-mini",  # Fast and cheap for fact extraction
+                model="gpt-4.1-mini",  # Fast and cheap for fact extraction
                 max_tokens=500
             )
             

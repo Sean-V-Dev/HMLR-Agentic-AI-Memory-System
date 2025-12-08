@@ -1,0 +1,16 @@
+# HMLR Development Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# RAGAS Benchmarking
+ragas>=0.4.0
+datasets>=2.14.0
+
+# Test Tracking (Optional)
+langsmith>=0.2.0
+
+# Environment Management
+python-dotenv>=1.0.0

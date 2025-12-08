@@ -22,21 +22,21 @@ class HMLRClient:
         client = HMLRClient(
             api_key="your-openai-key",
             db_path="memory.db",
-            model="gpt-4o-mini"  # ONLY tested model!
+            model="gpt-4.1-mini"  # ONLY tested model!
         )
         
         response = await client.chat("Tell me about Python")
         print(response["content"])
         ```
     
-    WARNING: Only tested with gpt-4o-mini. Other models may fail.
+    WARNING: Only tested with gpt-4.1-mini. Other models may fail.
     """
     
     def __init__(
         self,
         api_key: str,
         db_path: str = "hmlr_memory.db",
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4.1-mini",
         use_llm_intent_mode: bool = False,
         context_budget_tokens: int = 12000,
         max_sliding_window_turns: int = 15,
@@ -49,8 +49,8 @@ class HMLRClient:
         Args:
             api_key: OpenAI API key
             db_path: Path to SQLite database for memory storage
-            model: OpenAI model to use (default: gpt-4o-mini)
-                   WARNING: Only gpt-4o-mini has been tested!
+            model: OpenAI model to use (default: gpt-4.1-mini)
+                   WARNING: Only gpt-4.1-mini has been tested!
             use_llm_intent_mode: Use LLM for intent detection (default: False)
             context_budget_tokens: Max tokens for context (default: 12000)
             max_sliding_window_turns: Max turns in sliding window (default: 15)
@@ -58,10 +58,10 @@ class HMLRClient:
             **kwargs: Additional configuration options
         """
         # Model compatibility warning
-        if model != "gpt-4o-mini":
+        if model != "gpt-4.1-mini":
             warnings.warn(
                 f"⚠️  Model '{model}' has NOT been tested!\n"
-                f"HMLR is only validated with 'gpt-4o-mini'.\n"
+                f"HMLR is only validated with 'gpt-4.1-mini'.\n"
                 f"Other models may produce incorrect results or fail completely.\n"
                 f"Use at your own risk!",
                 UserWarning,

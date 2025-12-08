@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hmlr"
+version = "0.1.0"
+description = "Hierarchical Memory with Lattice Retrieval - AI agent memory system"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Sean-V-Dev"},
+]
+keywords = [
+    "ai",
+    "memory", 
+    "agents",
+    "rag",
+    "llm",
+    "retrieval",
+    "bridge-blocks",
+    "hierarchical-memory",
+    "openai",
+    "gpt-4o-mini",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "openai>=1.0.0",
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+langchain = [
+    "langchain>=0.1.0",
+    "langchain-openai>=0.1.0",
+]
+telemetry = [
+    "arize-phoenix>=4.0.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ragas>=0.4.0",
+    "langsmith>=0.2.0",
+    "datasets>=2.14.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Sean-V-Dev/HMLR-Agentic-AI-Memory-System"
+Repository = "https://github.com/Sean-V-Dev/HMLR-Agentic-AI-Memory-System"
+Issues = "https://github.com/Sean-V-Dev/HMLR-Agentic-AI-Memory-System/issues"
+
+[tool.setuptools]
+packages = ["hmlr"]
+
+[tool.setuptools.package-data]
+hmlr = ["config/*.json", "config/*.template"]
