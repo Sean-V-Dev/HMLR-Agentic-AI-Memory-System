@@ -138,7 +138,7 @@ class ManualGardener:
     - Global meta-tags
     """
     
-    def __init__(self, storage, embedding_storage, llm_client):
+    def __init__(self, storage, embedding_storage, llm_client, dossier_governor=None, dossier_storage=None):
         """
         Initialize gardener.
         
@@ -146,11 +146,15 @@ class ManualGardener:
             storage: Storage instance
             embedding_storage: EmbeddingStorage instance
             llm_client: LLM client for meta-tag extraction
+            dossier_governor: DossierGovernor instance (Phase 3+)
+            dossier_storage: DossierEmbeddingStorage instance (Phase 3+)
         """
         self.storage = storage
         self.embedding_storage = embedding_storage
         self.llm_client = llm_client
         self.chunker = HierarchicalChunker()
+        self.dossier_governor = dossier_governor
+        self.dossier_storage = dossier_storage
     
     def process_bridge_block(self, block_id: str) -> Dict[str, Any]:
         """
@@ -244,6 +248,11 @@ class ManualGardener:
         print(f"\n   💾 Storing in long-term memory...")
         self._store_chunks_with_tags(block_id, all_chunks, global_tags)
         print(f"   ✅ Stored {len(all_chunks)} chunks with {len(global_tags)} global tags")
+        
+        # 7. Delete processed bridge block from active memory
+        self._delete_bridge_block(block_id)
+        
+        print(f"\n✅ Gardener: Block {block_id} processed successfully!")
         
         return {
             "status": "success",
@@ -392,3 +401,104 @@ Tags:"""
             ))
         
         self.storage.conn.commit()
+    
+    def _delete_bridge_block(self, block_id: str):
+        """
+        Delete processed bridge block from daily_ledger.
+        
+        Args:
+            block_id: Bridge block ID to delete
+        """
+        cursor = self.storage.conn.cursor()
+        cursor.execute("DELETE FROM daily_ledger WHERE block_id = ?", (block_id,))
+        self.storage.conn.commit()
+        print(f"   🗑️  Deleted bridge block {block_id} from active memory")
+    
+    async def _group_facts_semantically(self, facts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Group related facts by semantic theme using LLM.
+        
+        This is Phase 2 preparation for Phase 3's dossier routing.
+        Groups facts that belong together conceptually, preparing them
+        for the DossierGovernor to decide which dossier they should join.
+        
+        Args:
+            facts: List of fact dictionaries with 'text' and 'turn_id' fields
+        
+        Returns:
+            List of fact groups: [{"label": "...", "facts": [...], "timestamp": "..."}]
+        
+        Example:
+            Input: [
+                {"text": "User is vegetarian", "turn_id": "turn_001"},
+                {"text": "User avoids meat", "turn_id": "turn_001"},
+                {"text": "User works with Python", "turn_id": "turn_002"}
+            ]
+            Output: [
+                {
+                    "label": "Dietary Preferences",
+                    "facts": ["User is vegetarian", "User avoids meat"],
+                    "timestamp": "2025-12-15T10:30:00"
+                },
+                {
+                    "label": "Programming",
+                    "facts": ["User works with Python"],
+                    "timestamp": "2025-12-15T10:31:00"
+                }
+            ]
+        """
+        if not facts:
+            return []
+        
+        # Format facts for LLM
+        facts_text = json.dumps(facts, indent=2)
+        
+        prompt = f"""Given these facts extracted from a conversation, group related facts by semantic theme.
+
+Facts:
+{facts_text}
+
+For each group, provide:
+1. A concise label (2-5 words) describing the theme
+2. The facts that belong to that group
+3. The earliest timestamp from facts in the group
+
+Return as JSON array:
+[
+  {{
+    "label": "Theme Name",
+    "facts": ["fact text 1", "fact text 2"],
+    "timestamp": "ISO timestamp"
+  }}
+]
+
+Groups:"""
+        
+        try:
+            response = await self.llm_client.query_external_api(
+                prompt=prompt,
+                model="gpt-4.1-mini"
+            )
+            
+            # Extract JSON from response
+            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            if json_match:
+                groups = json.loads(json_match.group(0))
+                print(f"   📦 Grouped {len(facts)} facts into {len(groups)} semantic clusters")
+                return groups
+            else:
+                print(f"   ⚠️  No JSON found in grouping response, creating single group")
+                # Fallback: put all facts in one group
+                return [{
+                    "label": "General Facts",
+                    "facts": [f['text'] for f in facts],
+                    "timestamp": facts[0].get('timestamp', datetime.now().isoformat())
+                }]
+        
+        except Exception as e:
+            print(f"   ⚠️  Semantic grouping failed: {e}, creating single group")
+            return [{
+                "label": "General Facts",
+                "facts": [f['text'] for f in facts],
+                "timestamp": facts[0].get('timestamp', datetime.now().isoformat())
+            }]
