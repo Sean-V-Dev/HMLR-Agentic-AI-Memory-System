@@ -468,6 +468,56 @@ class Storage:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_embedding_turn ON embeddings(turn_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_embedding_chunk ON embeddings(turn_id, chunk_index)")
         
+        # === DOSSIER SYSTEM TABLES (Phase 1) ===
+        # Dossiers: Meta-layer for aggregating semantically related facts
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dossiers (
+                dossier_id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                summary TEXT,
+                created_at TEXT NOT NULL,
+                last_updated TEXT NOT NULL,
+                permissions TEXT DEFAULT '{"access": "full"}',
+                status TEXT DEFAULT 'active'
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dossiers_updated ON dossiers(last_updated)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dossiers_status ON dossiers(status)")
+        
+        # Dossier Facts: Individual facts within dossiers
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dossier_facts (
+                fact_id TEXT PRIMARY KEY,
+                dossier_id TEXT NOT NULL,
+                fact_text TEXT NOT NULL,
+                fact_type TEXT,
+                added_at TEXT NOT NULL,
+                source_block_id TEXT,
+                source_turn_id TEXT,
+                confidence REAL DEFAULT 1.0,
+                FOREIGN KEY (dossier_id) REFERENCES dossiers(dossier_id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dossier_facts_dossier ON dossier_facts(dossier_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dossier_facts_added ON dossier_facts(added_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dossier_facts_source_block ON dossier_facts(source_block_id)")
+        
+        # Dossier Provenance: History tracking for dossier evolution
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dossier_provenance (
+                provenance_id TEXT PRIMARY KEY,
+                dossier_id TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                source_block_id TEXT,
+                source_turn_id TEXT,
+                details TEXT,
+                FOREIGN KEY (dossier_id) REFERENCES dossiers(dossier_id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_provenance_dossier ON dossier_provenance(dossier_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_provenance_timestamp ON dossier_provenance(timestamp)")
+        
         self.conn.commit()
         print(f"Storage initialized: {self.db_path}")
     
@@ -2030,6 +2080,216 @@ class Storage:
             logger.error(f"Failed to update metadata for block {block_id}: {e}")
             self.conn.rollback()
             return False
+
+    # =========================================================================
+    # DOSSIER OPERATIONS (Phase 1)
+    # =========================================================================
+    
+    def create_dossier(self, dossier_id: str, title: str, summary: str = "") -> bool:
+        """
+        Create a new dossier.
+        
+        Args:
+            dossier_id: Unique ID (format: dos_YYYYMMDD_HHMMSS)
+            title: Dossier title (from cluster_label)
+            summary: Initial summary (optional)
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                INSERT INTO dossiers (dossier_id, title, summary, created_at, last_updated)
+                VALUES (?, ?, ?, ?, ?)
+            """, (dossier_id, title, summary, now, now))
+            self.conn.commit()
+            logger.info(f"Created dossier: {dossier_id} - {title}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create dossier {dossier_id}: {e}")
+            self.conn.rollback()
+            return False
+    
+    def get_dossier(self, dossier_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get dossier by ID.
+        
+        Returns:
+            Dictionary with dossier fields, or None if not found
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM dossiers WHERE dossier_id = ?", (dossier_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    
+    def get_all_dossiers(self, status: str = 'active') -> List[Dict[str, Any]]:
+        """
+        Get all dossiers with given status.
+        
+        Args:
+            status: Filter by status ('active', 'archived', etc.)
+        
+        Returns:
+            List of dossier dictionaries
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM dossiers WHERE status = ? ORDER BY last_updated DESC", (status,))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def add_fact_to_dossier(
+        self,
+        dossier_id: str,
+        fact_id: str,
+        fact_text: str,
+        source_block_id: str,
+        source_turn_id: str = None,
+        fact_type: str = None,
+        confidence: float = 1.0
+    ) -> bool:
+        """
+        Add a fact to a dossier.
+        
+        Args:
+            dossier_id: Target dossier ID
+            fact_id: Unique fact ID (format: fact_YYYYMMDD_HHMMSS_XXX)
+            fact_text: The actual fact content
+            source_block_id: Bridge block that contributed this fact
+            source_turn_id: Optional turn ID within block
+            fact_type: Optional categorization (observation, preference, etc.)
+            confidence: Confidence score 0-1
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                INSERT INTO dossier_facts 
+                (fact_id, dossier_id, fact_text, fact_type, added_at, 
+                 source_block_id, source_turn_id, confidence)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (fact_id, dossier_id, fact_text, fact_type, now, 
+                  source_block_id, source_turn_id, confidence))
+            
+            # Update dossier's last_updated timestamp
+            cursor.execute("""
+                UPDATE dossiers SET last_updated = ? WHERE dossier_id = ?
+            """, (now, dossier_id))
+            
+            self.conn.commit()
+            logger.info(f"Added fact {fact_id} to dossier {dossier_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add fact to dossier: {e}")
+            self.conn.rollback()
+            return False
+    
+    def get_dossier_facts(self, dossier_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all facts for a dossier.
+        
+        Args:
+            dossier_id: Target dossier ID
+        
+        Returns:
+            List of fact dictionaries, ordered by added_at
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM dossier_facts 
+            WHERE dossier_id = ? 
+            ORDER BY added_at ASC
+        """, (dossier_id,))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def update_dossier_summary(self, dossier_id: str, new_summary: str) -> bool:
+        """
+        Update dossier summary (incremental updates).
+        
+        Args:
+            dossier_id: Target dossier ID
+            new_summary: Updated summary text
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                UPDATE dossiers 
+                SET summary = ?, last_updated = ? 
+                WHERE dossier_id = ?
+            """, (new_summary, now, dossier_id))
+            self.conn.commit()
+            logger.info(f"Updated summary for dossier {dossier_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update dossier summary: {e}")
+            self.conn.rollback()
+            return False
+    
+    def add_provenance_entry(
+        self,
+        dossier_id: str,
+        operation: str,
+        provenance_id: str,
+        source_block_id: str = None,
+        source_turn_id: str = None,
+        details: str = None
+    ) -> bool:
+        """
+        Add provenance tracking entry for dossier operations.
+        
+        Args:
+            dossier_id: Target dossier ID
+            operation: Operation type (created, fact_added, summary_updated, etc.)
+            provenance_id: Unique provenance ID (format: prov_YYYYMMDD_HHMMSS_XXX)
+            source_block_id: Optional bridge block that triggered operation
+            source_turn_id: Optional turn that triggered operation
+            details: Optional JSON with operation-specific details
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            cursor = self.conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                INSERT INTO dossier_provenance 
+                (provenance_id, dossier_id, operation, timestamp, 
+                 source_block_id, source_turn_id, details)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (provenance_id, dossier_id, operation, now, 
+                  source_block_id, source_turn_id, details))
+            self.conn.commit()
+            logger.info(f"Added provenance: {operation} for dossier {dossier_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to add provenance entry: {e}")
+            self.conn.rollback()
+            return False
+    
+    def get_dossier_history(self, dossier_id: str) -> List[Dict[str, Any]]:
+        """
+        Get provenance history for a dossier.
+        
+        Args:
+            dossier_id: Target dossier ID
+        
+        Returns:
+            List of provenance entries, ordered chronologically
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM dossier_provenance 
+            WHERE dossier_id = ? 
+            ORDER BY timestamp ASC
+        """, (dossier_id,))
+        return [dict(row) for row in cursor.fetchall()]
 
     def close(self):
         """Close database connection"""
