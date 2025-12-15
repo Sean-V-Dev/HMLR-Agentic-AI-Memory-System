@@ -27,11 +27,11 @@ def list_bridge_blocks(storage):
     rows = cursor.fetchall()
     
     if not rows:
-        print("❌ No bridge blocks found in daily_ledger")
+        print("[!] No bridge blocks found in daily_ledger")
         return []
         
     blocks = []
-    print(f"\n📦 Found {len(rows)} bridge blocks:\n")
+    print(f"\n[*] Found {len(rows)} bridge blocks:\n")
     
     for i, (block_id, content_json, created_at) in enumerate(rows, 1):
         try:
@@ -53,14 +53,14 @@ def list_bridge_blocks(storage):
 
 def process_single_block(gardener, block_id):
     """Process a single bridge block"""
-    print(f"\n🌱 Processing bridge block: {block_id}")
+    print(f"\n[*] Processing bridge block: {block_id}")
     print("="*70 + "\n")
     
     try:
         result = gardener.process_bridge_block(block_id)
         
         print("\n" + "="*70)
-        print(f"✅ GARDENING COMPLETE: {block_id}")
+        print(f"[+] GARDENING COMPLETE: {block_id}")
         print("="*70)
         print(f"\n📊 Processing Summary:")
         print(f"   Turns processed: {result.get('turns_processed', 0)}")
@@ -81,7 +81,7 @@ def process_single_block(gardener, block_id):
         return True
         
     except Exception as e:
-        print(f"\n❌ Error processing block {block_id}: {e}")
+        print(f"\n[!] Error processing block {block_id}: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -95,7 +95,7 @@ def run_manual_gardener(target_block_id: str = None):
         target_block_id: Optional block ID or 'all'. If None, will prompt user.
     """
     print("\n" + "="*70)
-    print("🌱 MANUAL GARDENER RUNNER")
+    print("MANUAL GARDENER RUNNER")
     print("="*70 + "\n")
     
     # Initialize components
@@ -103,12 +103,19 @@ def run_manual_gardener(target_block_id: str = None):
     factory = ComponentFactory()
     components = factory.create_all_components()
     
-    # Create ManualGardener
+    # Create ManualGardener with dossier support (Phase 2 + Phase 5)
     gardener = ManualGardener(
         storage=components.storage,
         embedding_storage=components.embedding_storage,
-        llm_client=components.external_api
+        llm_client=components.governor.api_client if components.governor else None,
+        dossier_governor=components.dossier_governor,
+        dossier_storage=components.dossier_storage
     )
+    
+    if components.dossier_governor:
+        print(f"   📝 Dossier governor connected to gardener")
+    else:
+        print(f"   ⚠️  Dossier system unavailable (gardener will skip dossier creation)")
     
     # List available blocks
     blocks = list_bridge_blocks(components.storage)
@@ -152,7 +159,7 @@ def run_manual_gardener(target_block_id: str = None):
                 print("❌ Invalid input.")
 
     # Execute processing
-    print(f"\n🚀 Starting processing of {len(block_ids_to_process)} block(s)...\n")
+    print(f"\n[*] Starting processing of {len(block_ids_to_process)} block(s)...\n")
     
     success_count = 0
     for bid in block_ids_to_process:
@@ -160,7 +167,7 @@ def run_manual_gardener(target_block_id: str = None):
             success_count += 1
             
     print("\n" + "="*70)
-    print(f"🏁 BATCH COMPLETE: {success_count}/{len(block_ids_to_process)} blocks processed successfully")
+    print(f"[+] BATCH COMPLETE: {success_count}/{len(block_ids_to_process)} blocks processed successfully")
     print("="*70 + "\n")
 
 

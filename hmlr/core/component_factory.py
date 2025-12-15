@@ -21,9 +21,13 @@ from hmlr.memory.retrieval.crawler import LatticeCrawler
 from hmlr.memory.retrieval.context_hydrator import ContextHydrator
 from hmlr.memory.retrieval.lattice import LatticeRetrieval, TheGovernor
 from hmlr.memory.retrieval.hmlr_hydrator import Hydrator
+from hmlr.memory.retrieval.dossier_retriever import DossierRetriever
 from hmlr.memory.synthesis import SynthesisManager
 from hmlr.memory.synthesis.user_profile_manager import UserProfileManager
 from hmlr.memory.synthesis.scribe import Scribe
+from hmlr.memory.synthesis.dossier_governor import DossierGovernor
+from hmlr.memory.dossier_storage import DossierEmbeddingStorage
+from hmlr.memory.id_generator import IDGenerator
 from hmlr.memory.chunking.chunk_engine import ChunkEngine
 from hmlr.memory.fact_scrubber import FactScrubber
 from hmlr.core.cognitive_lattice import SessionManager
@@ -52,6 +56,11 @@ class ComponentBundle:
     lattice_retrieval: LatticeRetrieval
     governor: TheGovernor
     hydrator: Hydrator
+    
+    # Dossier System (Phase 4)
+    dossier_retriever: Optional[DossierRetriever]
+    dossier_governor: Optional[DossierGovernor]
+    dossier_storage: Optional[DossierEmbeddingStorage]
     
     # Synthesis
     synthesis_manager: SynthesisManager
@@ -186,8 +195,43 @@ class ComponentFactory:
             print(f"   ⚠️  Could not initialize External API Client: {e}")
             external_api = None
         
-        # Initialize Governor now that we have API client
-        governor = TheGovernor(external_api, storage, crawler) if external_api else None
+        # === Dossier System (Phase 4) === #
+        print("   📂 Initializing dossier system...")
+        dossier_storage = None
+        dossier_retriever = None
+        dossier_governor = None
+        
+        try:
+            # Initialize dossier embedding storage
+            dossier_storage = DossierEmbeddingStorage(storage.db_path)
+            print(f"   📂 Dossier storage initialized")
+            
+            # Initialize dossier retriever
+            dossier_retriever = DossierRetriever(storage, dossier_storage)
+            print(f"   🔍 Dossier retriever initialized")
+            
+            # Initialize dossier governor (write-side)
+            if external_api:
+                id_generator = IDGenerator()
+                dossier_governor = DossierGovernor(
+                    storage=storage,
+                    dossier_storage=dossier_storage,
+                    llm_client=external_api,
+                    id_generator=id_generator
+                )
+                print(f"   📝 Dossier governor initialized")
+            else:
+                print(f"   ⚠️  Dossier governor offline (no API)")
+        except Exception as e:
+            print(f"   ⚠️  Could not initialize dossier system: {e}")
+            dossier_storage = None
+            dossier_retriever = None
+            dossier_governor = None
+        
+        # Initialize Governor now that we have API client and dossier_retriever
+        governor = TheGovernor(
+            external_api, storage, crawler, dossier_retriever=dossier_retriever
+        ) if external_api else None
         if governor:
             print(f"   🏛️  The Governor is online")
         else:
@@ -222,6 +266,9 @@ class ComponentFactory:
             lattice_retrieval=lattice_retrieval,
             governor=governor,
             hydrator=hydrator,
+            dossier_retriever=dossier_retriever,
+            dossier_governor=dossier_governor,
+            dossier_storage=dossier_storage,
             synthesis_manager=synthesis_manager,
             user_profile_manager=user_profile_manager,
             scribe=scribe,
