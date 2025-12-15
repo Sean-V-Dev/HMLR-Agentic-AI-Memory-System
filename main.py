@@ -1,9 +1,3 @@
-"""
-CognitiveLattice Console Interface (Refactored)
-
-Phase 4 Refactor: Simplified main.py using ConversationEngine for all conversation logic.
-Reduced from ~877 lines to ~150 lines by delegating to reusable components.
-"""
 
 import os
 # Force Phoenix to use the same storage folder every time
@@ -14,19 +8,11 @@ import asyncio
 from typing import Optional
 
 # Phase 3 Refactor: Component Factory
-from core.component_factory import ComponentFactory
-
-# Phase 2 Refactor: Plan display utilities
-from utils.plan_display import (
-    display_user_plans,
-    display_plan_details,
-    get_todays_tasks,
-    display_todays_tasks
-)
+from hmlr.core.component_factory import ComponentFactory
 
 # Memory import for type hints
-from memory import Storage
-from core.telemetry import init_telemetry
+from hmlr.memory import Storage
+from hmlr.core.telemetry import init_telemetry
 
 
 async def main():
@@ -77,27 +63,29 @@ async def main():
             
             if user_query.lower() in ['exit', 'quit']:
                 print("\n✅ Exiting interactive session.")
-                print("\n" + "="*70)
-                print("📊 Session Summary - Context Usage Metrics")
-                print("="*70)
                 
-                # Display usage metrics
-                overall_eff = components.usage_tracker.get_overall_efficiency()
-                summary = components.usage_tracker.get_summary()
-                query_count = summary.get('total_queries', 0)
-                total_turns = summary.get('total_turns_tracked', 0)
-                
-                print(f"\n🎯 Overall Context Efficiency:")
-                print(f"   Queries processed: {query_count}")
-                print(f"   Avg efficiency: {overall_eff:.1f}%")
-                print(f"   Total turns tracked: {total_turns}")
-                
-                # Most used turns
-                most_used = components.usage_tracker.get_most_used_turns(limit=5)
-                if most_used:
-                    print(f"\n🔥 Most Referenced Turns:")
-                    for turn_usage in most_used[:5]:
-                        print(f"   {turn_usage.turn_id}: used {turn_usage.usage_count} times")
+                # Display usage metrics if available
+                if hasattr(components, 'usage_tracker'):
+                    print("\n" + "="*70)
+                    print("📊 Session Summary - Context Usage Metrics")
+                    print("="*70)
+                    
+                    overall_eff = components.usage_tracker.get_overall_efficiency()
+                    summary = components.usage_tracker.get_summary()
+                    query_count = summary.get('total_queries', 0)
+                    total_turns = summary.get('total_turns_tracked', 0)
+                    
+                    print(f"\n🎯 Overall Context Efficiency:")
+                    print(f"   Queries processed: {query_count}")
+                    print(f"   Avg efficiency: {overall_eff:.1f}%")
+                    print(f"   Total turns tracked: {total_turns}")
+                    
+                    # Most used turns
+                    most_used = components.usage_tracker.get_most_used_turns(limit=5)
+                    if most_used:
+                        print(f"\n🔥 Most Referenced Turns:")
+                        for turn_usage in most_used[:5]:
+                            print(f"   {turn_usage.turn_id}: used {turn_usage.usage_count} times")
                 
                 print(f"\n✅ Session complete. Memory state saved.")
                 break

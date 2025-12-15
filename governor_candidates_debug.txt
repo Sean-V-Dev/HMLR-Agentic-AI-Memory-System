@@ -1,0 +1,30 @@
+GOVERNOR MEMORY FILTER DEBUG
+============================================================
+
+Query: what have you told me about chinese mountains in the past
+Total Candidates: 2
+
+EXTRACTED FACTS (apply to all candidates):
+1. Assistant retains memory of previous information provided about mountains in China during the conversation.
+2. Huangshan (Yellow Mountain) is located in Anhui Province, China, and is famous for granite peaks, hot springs, and the 'sea of clouds' phenomenon.
+3. Huangshan has inspired many Chinese painters and poets throughout history.
+4. Mount Everest is known as Qomolangma in Tibetan and Zhūmùlǎngmǎ Fēng (珠穆朗玛峰) in Chinese.
+5. Mount Everest is the highest mountain in the world at 8,848.86 meters, located on the border between Tibet (China) and Nepal.
+
+MEMORY CANDIDATES:
+[0] None @ 2025-12-10 (sim: 1.00)
+    User: Can you tell me about a mountain in china
+
+Assistant: One of the most famous mountains in China is Mount Everest, known as Qomolangma in Tibetan and Zhūmùlǎngmǎ Fēng (珠穆朗玛峰) in Chinese. It is the highest mountain in the world, standing at 8,848.86 meters (29,031.7 feet) above sea level. Mount Everest is located in the Himalayas on the border between Tibet (China) and Nepal.
+
+Another notable mountain is Huangshan (Yellow Mountain), famous for its stunning granite peaks, hot springs, and the "sea of clouds" phenomenon. Huangshan is located in Anhui Province and has been an inspiration for many Chinese painters and poets throughout history.
+
+If you want to know about a specific mountain or a particular region in China, feel free to ask!
+
+[1] None @ 2025-12-10 (sim: 1.00)
+    User: Do you have memory of telling me about The yellow mountains in china?
+
+Assistant: Yes, I do have memory of telling you about the Yellow Mountains in China, which are also known as Huangshan. They are famous for their dramatic granite peaks, hot springs, and the beautiful "sea of clouds" phenomenon. Huangshan is located in Anhui Province and has inspired many Chinese artists and poets over the centuries.
+
+If you'd like, I can provide more detailed information about Huangshan or any other mountains in China.
+

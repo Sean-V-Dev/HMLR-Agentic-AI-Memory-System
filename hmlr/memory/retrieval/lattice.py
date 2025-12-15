@@ -545,6 +545,30 @@ Return JSON:
                 candidates_text += f"   Content: {ec['content'][:300]}...\n"
                 candidates_text += f"   Metadata: {json.dumps(ec['metadata'])}\n\n"
             
+            # === DEBUG: Log memory candidates sent to governor === #
+            debug_file_path = "debug_llm_flow.txt"
+            with open(debug_file_path, 'a', encoding='utf-8') as f:
+                f.write(f"=" * 80 + "\n")
+                f.write(f"MEMORY CANDIDATES SENT TO GOVERNOR FOR FILTERING\n")
+                f.write(f"=" * 80 + "\n\n")
+                f.write(f"Total Candidates: {len(enriched_candidates)}\n\n")
+                
+                for ec in enriched_candidates:
+                    f.write(f"[{ec['index']}] Memory ID: {ec['memory_id']}\n")
+                    f.write(f"    Similarity Score: {ec['similarity']:.4f}\n")
+                    f.write(f"    Source Type: {ec['metadata'].get('source_type', 'unknown')}\n")
+                    f.write(f"    Timestamp: {ec['metadata'].get('timestamp', 'unknown')}\n")
+                    f.write(f"    Original Query: {ec['original_query'][:200]}")
+                    if len(ec['original_query']) > 200:
+                        f.write("...")
+                    f.write(f"\n")
+                    f.write(f"    Content Preview: {ec['content'][:300]}")
+                    if len(ec['content']) > 300:
+                        f.write("...")
+                    f.write(f"\n\n")
+                
+                f.write(f"\n--- 2-KEY FILTER PROMPT TO LLM ---\n\n")
+            
             filter_prompt = f"""You are a memory filter using 2-key validation.
 
 CURRENT QUERY: "{query}"
@@ -598,6 +622,24 @@ Return JSON:
                     print(f"\n   💭 GOVERNOR'S REASONING:")
                     for line in reasoning.split('\n'):
                         print(f"      {line}")
+                    
+                    # === DEBUG: Log filtering results === #
+                    debug_file_path = "debug_llm_flow.txt"
+                    with open(debug_file_path, 'a', encoding='utf-8') as f:
+                        f.write(f"\n--- GOVERNOR FILTERING RESULTS ---\n\n")
+                        f.write(f"Input: {len(candidates)} candidates\n")
+                        f.write(f"Output: {len(filtered)} selected as relevant\n")
+                        f.write(f"Selected Indices: {relevant_indices}\n\n")
+                        f.write(f"Governor's Reasoning:\n{reasoning}\n\n")
+                        
+                        f.write(f"SELECTED MEMORIES (will be included in context):\n\n")
+                        for idx, mem in enumerate(filtered, 1):
+                            f.write(f"  [{idx}] Memory ID: {mem.memory_id}\n")
+                            f.write(f"      Score: {mem.score:.4f}\n")
+                            f.write(f"      Content: {mem.content_preview[:200]}")
+                            if len(mem.content_preview) > 200:
+                                f.write("...")
+                            f.write(f"\n\n")
                     
                     if filtered:
                         print(f"\n   ✅ APPROVED MEMORIES:")

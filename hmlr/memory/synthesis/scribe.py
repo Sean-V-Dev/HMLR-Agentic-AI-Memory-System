@@ -102,7 +102,8 @@ Target JSON Structure:
       "attributes": {
         "type": "Allergy",
         "description": "User has a severe latex allergy",
-        "severity": "severe"  // or "mild", "preference", etc.
+        "severity": "severe",  // or "mild", "preference", etc.
+        "updated": "12/11/2025 14:30:45"  // Always include current date and time when creating or updating
       }
     }
   ]
@@ -170,10 +171,15 @@ class Scribe:
 
     def _query_llm(self, user_input: str) -> str:
         """Helper to call the synchronous API client"""
+        from datetime import datetime
+        
         # We pass the current profile context so the Scribe knows what already exists
         current_profile = self.profile_manager.get_user_profile_context()
         
-        full_prompt = f"{SCRIBE_SYSTEM_PROMPT}\n\nCURRENT PROFILE CONTEXT:\n{current_profile}\n\nUSER INPUT: \"{user_input}\""
+        # Include current timestamp for the LLM to use
+        current_time = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        
+        full_prompt = f"{SCRIBE_SYSTEM_PROMPT}\n\nCURRENT DATE/TIME: {current_time}\n\nCURRENT PROFILE CONTEXT:\n{current_profile}\n\nUSER INPUT: \"{user_input}\""
         
         # Use mini for better reasoning capabilities than nano
         return self.api_client.query_external_api(full_prompt, model="gpt-4.1-mini")

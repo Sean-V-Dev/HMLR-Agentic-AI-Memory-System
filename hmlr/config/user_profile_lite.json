@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-12-11T14:17:07.684714",
+  "glossary": {
+    "projects": [],
+    "entities": [],
+    "constraints": [
+      {
+        "key": "vegetarian_diet",
+        "type": "Dietary Preference",
+        "description": "User is no longer strictly vegetarian",
+        "severity": "none",
+        "updated": "12/11/2025"
+      },
+      {
+        "key": "fear_spiders",
+        "type": "Phobia",
+        "description": "User no longer has a severe fear of spiders",
+        "severity": "none",
+        "updated": "12/11/2025 14:17:03"
+      }
+    ]
+  }
+}

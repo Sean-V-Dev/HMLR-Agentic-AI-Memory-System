@@ -1,0 +1,220 @@
+# GitHub Copilot Instructions for CognitiveLattice (HMLR)
+
+## 🛡️ The "Architect-Builder" Workflow (MANDATORY)
+**You are the Builder. I am the Architect.** Do not simply "let it rip." Follow this 5-step protocol for every feature:
+
+### 1. The Mirror (Pre-Flight Check)
+**Before writing code**, you must restate the goal:
+* **The Goal:** "I will build [Function X] that takes [Input Y] and returns [Output Z]."
+* **The Trap:** "The biggest risk here is [Edge Case]."
+* **The Data:** "I expect the input JSON to look like this: `{...}`."
+
+### 2. Fixtures First (The "No-Mock" Rule)
+* ❌ **DO NOT** create lazy mocks inside test files (e.g., `mock_llm.return_value = "stuff"`).
+* ✅ **DO** create static JSON files in `tests/fixtures/` containing **real, messy, complex data**.
+* ✅ **DO** use `sqlite3.connect(':memory:')` for database tests. Never mock the cursor.
+
+### 3. Docstring-Driven Development (The Contract)
+Write the **Class/Function Docstring** first.
+* Explain *why* it exists.
+* Define the exact `Args` and `Returns` schema.
+* **Wait for my approval** of the docstring before implementing the logic.
+
+### 4. Assertion-Based Implementation
+When working from a Phase Plan, convert "To-Do" items into **Assertions**:
+* *Bad:* "- [ ] Create BridgeBlock class"
+* *Good:* "- [ ] Create BridgeBlock class. **Verification:** Inputting a raw Span MUST output a valid JSON object with a non-null `block_id`."
+
+### 5. The Audit (Self-Correction)
+After coding, ask yourself:
+* "Did I handle the failure case?"
+* "Did I add type hints?"
+* "Does this actually match the fixture data?"
+
+---
+
+## 🤝 The Handoff Protocol
+**When stopping a session or switching context**, generate a **Handoff Artifact**:
+1.  **Current Phase:** "We are on Phase [X], Checkbox [Y]."
+2.  **The Code State:** "Modified `memory/bridge.py`. Created `tests/test_bridge.py`."
+3.  **The Truth:** "Testing against `tests/fixtures/span_v1.json`."
+4.  **The Vulnerability:** "The logic for `open_loops` is currently weak/untested."
+
+---
+
+## 🏗️ Architecture & Patterns
+* **Tracer Bullets:** Build end-to-end flows for a *single* data point before building bulk processing.
+* **Dependency Injection:** Pass dependencies (LLM clients, DB connections) into constructors.
+* **Separation of Concerns:**
+    * `core/`: Base classes and types.
+    * `memory/`: Storage, retrieval, and HMLR logic.
+    * `handlers/`: Input processing.
+
+## 🐍 Code Style & Standards
+* **Type Hints:** REQUIRED. Use `typing.TypedDict` for JSON schemas.
+* **Async/Await:** Use for all I/O (LLM calls, DB reads).
+* **Pydantic:** Use for data validation at system boundaries.
+* **Docstrings:** Google Style.
+
+## 🧪 Testing Requirements
+* **Unit Tests:** `pytest`. Focus on logic, not syntax.
+* **Integration Tests:** Verify the flow from Ingestion → Storage → Retrieval.
+* **Coverage:** Don't chase %. Chase **State Validity** (e.g., "Did the Ledger actually update?").
+
+---
+
+## 🚫 Anti-Patterns to Avoid
+* ❌ **Mocking Data Objects:** If the data structure changes, the mock passes but production fails. Use Fixtures.
+* ❌ **"Letting it Rip":** Writing 200 lines of code without running a tracer bullet.
+* ❌ **Silent Failures:** Using generic `try/except: pass`. Always log the error.
+* ❌ **Magic Strings:** Use `constants.py` for DB table names, status flags, etc.
+
+---
+## Documentation Organization & Roadmap Management
+
+### Single Source of Truth Principle
+**ALWAYS maintain ONE master roadmap** that serves as the navigation hub. Never create competing roadmap documents or let documentation sprawl without updating the master.
+
+### Hierarchical Structure (Required)
+```
+ROADMAP.md (Master - High Level Only)
+├── Phase 1: Foundation
+│   ├── Status: ✅ Complete
+│   ├── Brief: Storage backbone, day nodes, persistence
+│   └── Details: → docs/phases/PHASE_1_FOUNDATION.md
+├── Phase 2: Retrieval  
+│   ├── Status: ✅ Complete
+│   ├── Brief: Intent analysis, vector search, crawler
+│   └── Details: → docs/phases/PHASE_2_RETRIEVAL.md
+├── Phase 3: Sliding Window
+│   ├── Status: 🔶 In Progress
+│   ├── Brief: Two-tier tracking, topic management
+│   └── Details: → docs/phases/PHASE_3_SLIDING_WINDOW.md
+└── Phase 4: Advanced Features
+    ├── Status: ⚠️ Planned
+    ├── Brief: Compression, eviction, learning loops
+    └── Details: → docs/phases/PHASE_4_ADVANCED.md
+```
+
+### Master Roadmap Rules (ROADMAP.md)
+1. **Keep it SHORT** - Max 200 lines, executive summary only
+2. **Status indicators**: ✅ Complete, 🔶 In Progress, ⚠️ Planned, 🔴 Blocked
+3. **One-line descriptions** per feature/phase
+4. **Links to detailed files** - Never inline massive detail
+5. **Update immediately** when plans change
+6. **Living document** - Not frozen after creation
+
+### Phase Detail Files (docs/phases/*.md)
+1. **Comprehensive specifications** - All the detail lives here
+2. **Implementation examples** - Code snippets, schemas
+3. **Testing requirements** - What success looks like
+4. **Dependencies** - What must be done first
+5. **Decision log** - Why we chose this approach
+6. **Update after completion** - Mark what was actually built vs planned
+
+### When Plans Change (Critical Process)
+1. **Update ROADMAP.md first** - Change status, reorder priorities
+2. **Update phase detail file** - Adjust specs if needed
+3. **Create decision log entry** - Document why we pivoted
+4. **Archive old plans** - Move to `docs/archive/` with date prefix
+5. **Never delete** - Keep history for learning
+
+### Documentation Lifecycle
+```
+Planning Phase:
+1. User requests feature
+2. Agent creates/updates phase detail file (docs/phases/PHASE_X.md)
+3. Agent updates ROADMAP.md with link
+4. User approves approach
+
+Implementation Phase:
+5. Agent follows phase detail file
+6. Agent creates implementation summary (docs/summaries/PHASE_X_SUMMARY.md)
+7. Agent marks roadmap status: ⚠️ Planned → 🔶 In Progress
+
+Completion Phase:
+8. Agent runs tests, validates feature
+9. Agent updates phase detail file with "What Was Built"
+10. Agent marks roadmap status: 🔶 In Progress → ✅ Complete
+11. Agent creates completion report (docs/completed/PHASE_X_COMPLETE.md)
+
+Pivot/Change Phase:
+12. Agent documents decision in phase file under "## Changes"
+13. Agent updates ROADMAP.md immediately
+14. Agent archives outdated plans to docs/archive/
+```
+
+### File Naming Conventions
+- **Master roadmap**: `ROADMAP.md` (root directory)
+- **Phase details**: `docs/phases/PHASE_[N]_[NAME].md`
+- **Summaries**: `docs/summaries/PHASE_[N]_SUMMARY.md`
+- **Completion reports**: `docs/completed/PHASE_[N]_COMPLETE.md`
+- **Archived old plans**: `docs/archive/YYYY-MM-DD_[DESCRIPTION].md`
+- **Decision logs**: `docs/decisions/ADR_[N]_[TOPIC].md` (Architecture Decision Records)
+
+### What to Archive
+- Old roadmaps that are superseded
+- Planning documents once implemented
+- Exploratory docs that led to decisions
+- Flowchart analyses after integration
+- Anything that would clutter the root directory
+
+### Anti-Patterns to Avoid
+❌ Creating `ROADMAP_V2.md`, `ROADMAP_FINAL.md`, etc. (Update the one!)
+❌ Dumping 500-line implementation details in ROADMAP.md
+❌ Creating ad-hoc planning docs without linking from master
+❌ Leaving status markers stale (update as work progresses)
+❌ Deleting old plans (archive them instead)
+❌ Creating summary docs without updating ROADMAP.md
+
+### Agent Responsibilities
+**When user mentions a new feature:**
+1. Check if ROADMAP.md exists, create if not
+2. Determine which phase it belongs to
+3. Create/update phase detail file with full specs
+4. Add one-line entry to ROADMAP.md with link
+5. Ask user to confirm before implementing
+
+**When completing work:**
+1. Update phase detail file: "## What Was Built"
+2. Update ROADMAP.md status: ⚠️ → 🔶 → ✅
+3. Create completion summary (optional for small features)
+4. Archive any temporary planning docs
+
+**When plans change:**
+1. Update ROADMAP.md immediately with new priority
+2. Document decision in phase file or create ADR
+3. Archive superseded documents to docs/archive/
+
+**Before starting work:**
+1. Always check ROADMAP.md for current priorities
+2. Read the relevant phase detail file completely
+3. Never assume - verify current status
+
+### Directory Structure
+```
+CognitiveLattice/
+├── ROADMAP.md                    ← SINGLE SOURCE OF TRUTH
+├── README.md                     ← User-facing overview
+├── docs/
+207: │   ├── phases/                   ← Detailed phase specs
+208: │   │   ├── PHASE_1_FOUNDATION.md
+209: │   │   ├── PHASE_2_RETRIEVAL.md
+210: │   │   └── PHASE_3_SLIDING_WINDOW.md
+211: │   ├── summaries/                ← Work summaries
+212: │   │   └── PHASE_1_SUMMARY.md
+213: │   ├── completed/                ← Completion reports
+214: │   │   └── PHASE_1_COMPLETE.md
+215: │   ├── decisions/                ← Architecture Decision Records
+216: │   │   └── ADR_001_TWO_TIER_TRACKING.md
+217: │   └── archive/                  ← Old/superseded docs
+218: │       └── 2025-10-15_FLOWCHART_ALIGNMENT.md
+```
+
+### When User Says "Follow the Plan"
+1. Read ROADMAP.md to identify current phase
+2. Open the phase detail file (e.g., docs/phases/PHASE_4_1.md)
+3. Follow the detailed spec in that file
+4. Don't copy-paste huge specs back to user
+5. Just execute and report progress
+6. Update status markers as you go

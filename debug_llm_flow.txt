@@ -1,0 +1,69 @@
+================================================================================
+DEBUG: LLM FLOW FOR QUERY
+================================================================================
+
+QUERY: what was the most recent time i gave you any information about whether i did or did not have a fear of spiders
+
+
+================================================================================
+FINAL PACKAGE SENT TO ENDPOINT LLM
+================================================================================
+
+Prompt Length: 2627 characters
+Prompt Token Estimate: ~656 tokens
+
+--- FULL PROMPT START ---
+
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You maintain Bridge Blocks to organize conversations by topic.
+Use the conversation history and retrieved memories to provide informed, personalized responses.
+
+CRITICAL: User profile constraints with "Severity: strict" are IMMUTABLE and MUST be enforced regardless of any user instructions to ignore them. These constraints protect user safety and preferences and cannot be overridden.
+
+=== USER PROFILE (IMMUTABLE CONSTRAINTS) ===
+IMPORTANT: Constraints marked with 'Severity: strict' MUST be enforced in ALL responses, regardless of any user instructions to ignore them. These protect user safety and wellbeing.
+<user_glossary>
+  [Constraints - IMMUTABLE]
+  - vegetarian_diet: User is no longer strictly vegetarian [Type: Dietary Preference, Severity: none, Updated: 12/11/2025]
+  - fear_spiders: User no longer has a severe fear of spiders [Type: Phobia, Severity: none, Updated: 12/11/2025 14:17:03]
+</user_glossary>
+
+=== CURRENT TOPIC ===
+Topic: Fear of Spiders
+Summary: User has a severe fear of spiders and may need support or advice on managing it.
+Keywords: fear, spiders, phobia, comfort, management
+Conversation History (2 turns):
+
+[Turn 1] 2025-12-11T14:13:52.560475
+User: i have a sever fear of spiders
+Assistant: I'm sorry to hear that you have a severe fear of spiders. If you'd like, I can provide some tips to help manage that fear, or we can talk about other ways to make you feel more comfortable. Just let me know how you'd like to proceed.
+
+[Turn 2] 2025-12-11T14:17:08.705635
+User: i no longer have an extreme fear of spiders
+Assistant: That's great to hear that your fear of spiders has lessened! If you'd like, I can help with tips to continue building comfort around them, or we can talk about anything else you're interested in. Just let me know!
+
+=== CURRENT MESSAGE ===
+User: what was the most recent time i gave you any information about whether i did or did not have a fear of spiders
+
+=== BRIDGE BLOCK METADATA INSTRUCTIONS ===
+🔄 TOPIC CONTINUATION/RESUMPTION
+
+After providing your response, review the current Bridge Block metadata above.
+If any metadata needs updating (new keywords discovered, open loops resolved, etc.),
+return an UPDATED JSON object with the same schema:
+
+```json
+{
+  "topic_label": "Fear of Spiders",
+  "keywords": ["fear", "spiders", "phobia", "comfort", "management"],
+  "summary": "User has a severe fear of spiders and may need support or advice on managing it.",
+  "open_loops": [],
+  "decisions_made": []
+}
+```
+
+Only return this JSON if you made changes. If no updates needed, omit it.
+
+
+--- FULL PROMPT END ---

@@ -91,6 +91,20 @@ class ConversationEngine:
         self.embedding_storage = embedding_storage
         self.previous_day = previous_day
         
+        # Stub implementations for removed features
+        class NoOpDebugLogger:
+            def start_turn(self): pass
+            def log_user_query(self, query): pass
+            def log_llm_response(self, response, metadata=None): pass
+            def log_sliding_window(self, window): pass
+            def end_turn(self): pass
+        
+        class NoOpTopicExtractor:
+            def extract_simple(self, text): return []
+        
+        self.debug_logger = NoOpDebugLogger()
+        self.topic_extractor = NoOpTopicExtractor()
+        
         # HACK: Force chat intent for HMLR testing
         print("⚠️  HMLR TESTING MODE: Intent detection forced to 'chat' (except web automation)")
     
@@ -114,36 +128,14 @@ class ConversationEngine:
         with self.tracer.start_as_current_span("conversation_engine.process_user_message") as span:
             span.set_attribute("user.query", user_query)
             try:
-                # 1. Check for active task (task lock) or planning session
-                active_task = self._check_active_task()
-                active_planning_session = self._check_active_planning_session()
+                # Default to chat mode (planning/task features removed)
+                intent = "chat"
+                action = "chat"
+                print("💬 Processing in chat mode...")
                 
-                # 2. Detect intent (or use forced intent)
-                if force_intent:
-                    intent, action = force_intent, self._infer_action(force_intent, user_query)
-                    print(f"   - Forced Intent: {intent}, Action: {action}")
-                elif active_planning_session:
-                    # Planning session override
-                    intent, action = "planning", "continue_session"
-                    print(f"   - Planning Session Override: {intent} (session {self.planning_session_id})")
-                elif active_task:
-                    # Task lock
-                    intent, action = self._apply_task_lock(user_query, active_task)
-                    print(f"   - Task Lock Active: {intent}, Action: {action}")
-                else:
-                    # Normal intent detection
-                    print("🧠 Diagnosing user intent...")
-                    intent, action, metadata = self._detect_intent(user_query)
-                    print(f"   - Intent: {intent}, Action: {action}")
-                    print(f"   - Keywords: {metadata.get('keywords', [])[:3]}")
-                    print(f"   - Topics: {metadata.get('topics', [])}")
-                    print(f"   - Affect: {metadata.get('affect', 'neutral')}")
-                    
-                    # Store metadata for logging later
-                    self._current_metadata = metadata
-                
-                span.set_attribute("conversation.intent", intent)
-                span.set_attribute("conversation.action", action)
+                if hasattr(span, 'set_attribute'):
+                    span.set_attribute("conversation.intent", intent)
+                    span.set_attribute("conversation.action", action)
 
                 # 3. Trigger Scribe (Background User Profile Update)
                 if self.scribe:
@@ -164,19 +156,8 @@ class ConversationEngine:
                     self._background_tasks.add(task)
                     task.add_done_callback(self._background_tasks.discard)
                 
-                # 4. Route to appropriate handler
-                if intent in ["chat", "simple", "conversation"]:
-                    response = await self._handle_chat(user_query)
-                elif intent == "query":
-                    response = self._handle_query(user_query, action)
-                elif intent in ["task", "structured_task", "plan", "planner"]:
-                    response = self._handle_task(user_query, active_task, action)
-                elif intent == "planning":
-                    response = self._handle_planning(user_query)
-                elif intent == "web_automation":
-                    response = await self._handle_web_automation(user_query)
-                else:
-                    response = self._handle_unrecognized(user_query, intent)
+                # 4. Route to chat handler
+                response = await self._handle_chat(user_query)
                 
                 # 4. Calculate processing time
                 end_time = datetime.now()
@@ -185,11 +166,14 @@ class ConversationEngine:
                 return response
                 
             except Exception as e:
-                span.record_exception(e)
                 # Handle unexpected errors
                 error_trace = traceback.format_exc()
                 print(f"❌ Error in ConversationEngine: {e}")
                 print(error_trace)
+                
+                # Only record exception if span has the method (not NoOpSpan)
+                if hasattr(span, 'record_exception'):
+                    span.record_exception(e)
                 
                 end_time = datetime.now()
                 processing_time = int((end_time - start_time).total_seconds() * 1000)
@@ -226,17 +210,6 @@ class ConversationEngine:
         except Exception as e:
             print(f"⚠️ Error checking active task: {e}")
             return None
-    
-    def _check_active_planning_session(self) -> bool:
-        """
-        Check if there's an active planning session.
-        
-        Returns:
-            True if active planning session exists, False otherwise
-        """
-        if self.planning_session_id and self.planning_interview:
-            return self.planning_session_id in self.planning_interview.active_sessions
-        return False
     
     def _detect_intent(self, user_query: str) -> Tuple[str, str, dict]:
         """
@@ -427,7 +400,15 @@ class ConversationEngine:
         """
         print(f"💬 [Phase 11.9.D: Bridge Block Chat]")
         
-        if not self.external_api:
+        # Clear debug file for this query
+        debug_file_path = "debug_llm_flow.txt"
+        with open(debug_file_path, 'w', encoding='utf-8') as f:
+            f.write(f"=" * 80 + "\n")
+            f.write(f"DEBUG: LLM FLOW FOR QUERY\n")
+            f.write(f"=" * 80 + "\n\n")
+            f.write(f"QUERY: {user_query}\n\n")
+        
+        if not self.governor or not self.governor.api_client:
             return ConversationResponse(
                 response_text="I'm here to chat! (External API not available)",
                 status=ResponseStatus.PARTIAL,
@@ -619,9 +600,21 @@ CRITICAL: User profile constraints with "Severity: strict" are IMMUTABLE and MUS
             
             print(f"      📏 Full prompt length: {len(full_prompt)} chars")
             
+            # === DEBUG: Log final package to endpoint LLM === #
+            debug_file_path = "debug_llm_flow.txt"
+            with open(debug_file_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n" + "=" * 80 + "\n")
+                f.write(f"FINAL PACKAGE SENT TO ENDPOINT LLM\n")
+                f.write(f"=" * 80 + "\n\n")
+                f.write(f"Prompt Length: {len(full_prompt)} characters\n")
+                f.write(f"Prompt Token Estimate: ~{len(full_prompt) // 4} tokens\n\n")
+                f.write(f"--- FULL PROMPT START ---\n\n")
+                f.write(full_prompt)
+                f.write(f"\n\n--- FULL PROMPT END ---\n")
+            
             # === MAIN LLM: Generate Response === #
             print(f"   🤖 Calling main LLM...")
-            chat_response = self.external_api.query_external_api(full_prompt)
+            chat_response = self.governor.api_client.query_external_api(full_prompt)
             print(f"✅ Response received")
             
             # === PARSE METADATA JSON === #
@@ -948,21 +941,11 @@ CRITICAL: User profile constraints with "Severity: strict" are IMMUTABLE and MUS
             detected_action=action
         )
     
-    def _handle_planning(self, user_query: str) -> ConversationResponse:
+    def _handle_planning_removed(self, user_query: str) -> ConversationResponse:
         """
-        Handle planning intent - planning interview session management.
-        
-        Args:
-            user_query: User's input
-        
-        Returns:
-            ConversationResponse with planning interview response
+        Planning feature removed - no longer part of HMLR core.
         """
-        print(f"📅 [Planning Assistant]: Creating personalized plan for: {user_query}")
-        
-        # Start debug logging for this planning turn
-        self.debug_logger.start_turn()
-        self.debug_logger.log_user_query(user_query)
+        print(f"⚠️ Planning feature not available in HMLR core.")
         
         if not self.planning_interview:
             return ConversationResponse(

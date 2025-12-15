@@ -6,7 +6,7 @@ Functions for displaying user plans and tasks in the console interface.
 
 from datetime import datetime
 from typing import List
-from memory.models import UserPlan, PlanItem
+from hmlr.memory.models import UserPlan, PlanItem
 
 
 def display_user_plans(storage):
