@@ -91,7 +91,8 @@ class ContextHydrator:
         facts: List[Dict[str, Any]],
         system_prompt: str = "",
         user_message: str = "",
-        is_new_topic: bool = False
+        is_new_topic: bool = False,
+        dossiers: List[Dict[str, Any]] = None
     ) -> str:
         """
         Phase 11.9.C: Format Bridge Block context for LLM.
@@ -109,6 +110,7 @@ class ContextHydrator:
             system_prompt: Optional system prompt to prepend
             user_message: Current user message
             is_new_topic: If True, LLM must generate new block header schema
+            dossiers: Retrieved dossiers from dossier system (Phase 4)
         
         Returns:
             Formatted context string ready for main LLM
@@ -190,6 +192,32 @@ class ContextHydrator:
                 sections.append(f"[{category}] {key}: {value}")
             sections.append("")
             print(f"   📊 Facts: {len(facts)} included")
+        
+        # 3.5. Dossiers (Phase 4: aggregated fact collections)
+        if dossiers:
+            sections.append("=== DOSSIERS (AGGREGATED FACTS) ===")
+            sections.append("(Collections of related facts extracted from past conversations)")
+            sections.append("")
+            
+            for i, dossier in enumerate(dossiers, 1):
+                topic = dossier.get('topic_label', 'Unknown Topic')
+                summary = dossier.get('summary', 'No summary available')
+                dossier_facts = dossier.get('facts', [])
+                created_at = dossier.get('created_at', 'unknown')
+                updated_at = dossier.get('updated_at', 'unknown')
+                
+                sections.append(f"{i}. {topic}")
+                sections.append(f"   Summary: {summary}")
+                sections.append(f"   Facts ({len(dossier_facts)}):")
+                for j, dfact in enumerate(dossier_facts[:10], 1):  # Limit to 10 facts per dossier
+                    fact_text = dfact.get('fact_text', '')
+                    sections.append(f"      {j}. {fact_text}")
+                if len(dossier_facts) > 10:
+                    sections.append(f"      ... and {len(dossier_facts) - 10} more facts")
+                sections.append(f"   Last Updated: {updated_at}")
+                sections.append("")
+            
+            print(f"   📂 Dossiers: {len(dossiers)} included")
         
         # 4. Retrieved Memories (if any)
         if memories:

@@ -123,12 +123,14 @@ class TheGovernor:
         api_client: ExternalAPIClient, 
         storage: Storage,
         crawler: LatticeCrawler,
-        profile_path: str = "config/user_profile_lite.json"
+        profile_path: str = "config/user_profile_lite.json",
+        dossier_retriever = None  # Phase 4: Dossier retrieval
     ):
         self.tracer = get_tracer(__name__)
         self.api_client = api_client
         self.storage = storage
         self.crawler = crawler
+        self.dossier_retriever = dossier_retriever
         self.profile = self._load_profile(profile_path)
 
     def _load_profile(self, path: str) -> Dict[str, str]:
@@ -144,14 +146,15 @@ class TheGovernor:
         query: str, 
         day_id: str,
         candidates: Optional[List[MemoryCandidate]] = None
-    ) -> Tuple[Dict[str, Any], List[MemoryCandidate], List[Dict[str, Any]]]:
+    ) -> Tuple[Dict[str, Any], List[MemoryCandidate], List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Phase 11.9.A: Governor Routing with 3 Parallel Tasks
+        Phase 11.9.A + Phase 4: Governor Routing with 4 Parallel Tasks
         
-        Executes 3 independent async tasks:
+        Executes 4 independent async tasks:
         1. Bridge Block routing (LLM)
         2. Memory retrieval + 2-key filtering (Vector + LLM)
         3. Fact store lookup (SQLite)
+        4. Dossier retrieval (fact-level embeddings) [Phase 4]
         
         Args:
             query: User query text
@@ -159,27 +162,40 @@ class TheGovernor:
             candidates: Optional pre-fetched memory candidates (from retrieval layer)
         
         Returns:
-            Tuple of (routing_decision, filtered_memories, facts)
+            Tuple of (routing_decision, filtered_memories, facts, dossiers)
             - routing_decision: {matched_block_id, is_new_topic, reasoning, topic_label}
             - filtered_memories: List of MemoryCandidate objects (2-key filtered)
             - facts: List of fact dictionaries from fact_store
+            - dossiers: List of dossier dictionaries (Phase 4)
         """
         with self.tracer.start_as_current_span("the_governor.govern") as span:
             span.set_attribute("governor.query", query)
             span.set_attribute("governor.day_id", day_id)
 
             # ===================================================================
-            # PARALLEL EXECUTION: 3 Independent Tasks
+            # PARALLEL EXECUTION: 4 Independent Tasks (Phase 4: added dossiers)
             # ===================================================================
             # Note: _lookup_facts is synchronous, so we wrap it in run_in_executor
             loop = asyncio.get_event_loop()
             
-            routing_decision, filtered_memories, facts = await asyncio.gather(
-                self._route_to_bridge_block(query, day_id),
-                self._retrieve_and_filter_memories(query, day_id, candidates),
-                loop.run_in_executor(None, self._lookup_facts, query),
-                return_exceptions=True  # Don't fail entire govern if one task fails
-            )
+            # Execute dossier retrieval if dossier_retriever is available
+            if self.dossier_retriever:
+                routing_decision, filtered_memories, facts, dossiers = await asyncio.gather(
+                    self._route_to_bridge_block(query, day_id),
+                    self._retrieve_and_filter_memories(query, day_id, candidates),
+                    loop.run_in_executor(None, self._lookup_facts, query),
+                    loop.run_in_executor(None, self._retrieve_dossiers, query),
+                    return_exceptions=True  # Don't fail entire govern if one task fails
+                )
+            else:
+                # Fallback for systems without dossier_retriever
+                routing_decision, filtered_memories, facts = await asyncio.gather(
+                    self._route_to_bridge_block(query, day_id),
+                    self._retrieve_and_filter_memories(query, day_id, candidates),
+                    loop.run_in_executor(None, self._lookup_facts, query),
+                    return_exceptions=True
+                )
+                dossiers = []
             
             # Handle exceptions from parallel tasks
             if isinstance(routing_decision, Exception):
@@ -194,21 +210,27 @@ class TheGovernor:
                 logger.error(f"Fact lookup failed: {facts}")
                 facts = []
             
+            if isinstance(dossiers, Exception):
+                logger.error(f"Dossier retrieval failed: {dossiers}")
+                dossiers = []
+            
             # Log results
             span.set_attribute("governor.routing_matched_block", routing_decision.get("matched_block_id"))
             span.set_attribute("governor.routing_is_new_topic", routing_decision.get("is_new_topic"))
             span.set_attribute("governor.memories_count", len(filtered_memories))
             span.set_attribute("governor.facts_count", len(facts))
+            span.set_attribute("governor.dossiers_count", len(dossiers))
             
             logger.info(
                 f"Governor results: "
                 f"Matched={routing_decision.get('matched_block_id')}, "
                 f"NewTopic={routing_decision.get('is_new_topic')}, "
                 f"Memories={len(filtered_memories)}, "
-                f"Facts={len(facts)}"
+                f"Facts={len(facts)}, "
+                f"Dossiers={len(dossiers)}"
             )
             
-            return routing_decision, filtered_memories, facts
+            return routing_decision, filtered_memories, facts, dossiers
     
     async def _route_to_bridge_block(self, query: str, day_id: str) -> Dict[str, Any]:
         """
@@ -696,6 +718,33 @@ Return JSON:
             span.set_attribute("fact_lookup.hits", len(facts))
             logger.info(f"Fact lookup: Found {len(facts)} matching facts")
             return facts
+    
+    def _retrieve_dossiers(self, query: str) -> List[Dict[str, Any]]:
+        """
+        TASK 4: Dossier retrieval (synchronous semantic search via embeddings).
+        
+        Args:
+            query: User query text
+        
+        Returns:
+            List of dossier dictionaries with metadata and facts
+        """
+        if not self.dossier_retriever:
+            return []
+        
+        with self.tracer.start_as_current_span("governor.retrieve_dossiers") as span:
+            span.set_attribute("dossier_retrieval.query", query)
+            
+            # Retrieve top-k dossiers with threshold filtering
+            dossiers = self.dossier_retriever.retrieve_relevant_dossiers(
+                query=query,
+                top_k=3,
+                threshold=0.4
+            )
+            
+            span.set_attribute("dossier_retrieval.hits", len(dossiers))
+            logger.info(f"Dossier retrieval: Found {len(dossiers)} relevant dossiers")
+            return dossiers
     
     def _check_fact_store(self, query: str) -> List[Dict[str, Any]]:
         """
