@@ -221,16 +221,58 @@ class ManualGardener:
                 chunk.text = summary
                 print(f"      ✅ {chunk.chunk_id}: {len(summary)} chars")
         
-        # 4. Extract global meta-tags
-        print(f"\n   🏷️  Extracting global meta-tags from entire topic...")
-        full_topic_text = self._reconstruct_full_topic(block_data)
-        global_tags = self._extract_global_tags(full_topic_text, topic_label)
+        # 4. Load existing facts from fact_store (extracted by FactScrubber during conversation)
+        print(f"\n   📋 Loading facts from fact_store...")
+        existing_facts = self.storage.get_facts_for_block(block_id)
+        print(f"   ✅ Found {len(existing_facts)} facts extracted during conversation")
         
-        print(f"   ✅ Extracted {len(global_tags)} global tags:")
-        for tag in global_tags:
-            print(f"      • {tag['type']}: {tag['value']}")
+        # Show the facts
+        for fact in existing_facts:
+            fact_key = fact.get('key', 'unknown')
+            fact_value = fact.get('value', '')
+            print(f"      • {fact_key}: {fact_value[:80]}...")
         
-        # 5. Embed all chunks
+        # 5. Process facts into dossiers (Phase 2 -> Phase 3 flow)
+        if self.dossier_governor and existing_facts:
+            print(f"\n   🗂️  Processing facts into dossiers...")
+            
+            # Prepare facts for semantic grouping
+            fact_list = []
+            for fact in existing_facts:
+                fact_list.append({
+                    'text': fact.get('value', ''),
+                    'key': fact.get('key', ''),
+                    'timestamp': fact.get('timestamp', datetime.now().isoformat()),
+                    'turn_id': fact.get('turn_id', '')
+                })
+            
+            # Group facts semantically
+            import asyncio
+            fact_groups = asyncio.run(self._group_facts_semantically(fact_list))
+            
+            # Create dossiers from each group
+            dossier_count = 0
+            for group in fact_groups:
+                fact_packet = {
+                    'cluster_label': group['label'],
+                    'facts': group['facts'],
+                    'source_block_id': block_id,
+                    'timestamp': group.get('timestamp', datetime.now().isoformat())
+                }
+                
+                try:
+                    dossier_id = asyncio.run(self.dossier_governor.process_fact_packet(fact_packet))
+                    if dossier_id:
+                        print(f"      ✅ Created/updated dossier: {dossier_id} ({group['label']})")
+                        dossier_count += 1
+                except Exception as e:
+                    print(f"      ⚠️  Failed to create dossier for '{group['label']}': {e}")
+            
+            print(f"   ✅ Processed {len(fact_groups)} fact groups into {dossier_count} dossiers")
+        elif not self.dossier_governor:
+            print(f"   ⚠️  Dossier system unavailable - facts stored but not grouped into dossiers")
+        
+        # 7. Embed all chunks
         print(f"\n   🔍 Creating embeddings...")
         embedding_count = 0
         
@@ -244,12 +286,12 @@ class ManualGardener:
         
         print(f"   ✅ Created {embedding_count} embeddings")
         
-        # 6. Store chunks with global tags in long-term memory
+        # 8. Store chunks in long-term memory (gardened_memory table)
         print(f"\n   💾 Storing in long-term memory...")
-        self._store_chunks_with_tags(block_id, all_chunks, global_tags)
-        print(f"   ✅ Stored {len(all_chunks)} chunks with {len(global_tags)} global tags")
+        self._store_chunks_with_tags(block_id, all_chunks, existing_facts)
+        print(f"   ✅ Stored {len(all_chunks)} chunks with {len(existing_facts)} facts")
         
-        # 7. Delete processed bridge block from active memory
+        # 9. Delete processed bridge block from active memory
         self._delete_bridge_block(block_id)
         
         print(f"\n✅ Gardener: Block {block_id} processed successfully!")
@@ -260,8 +302,8 @@ class ManualGardener:
             "topic_label": topic_label,
             "chunks_created": len(all_chunks),
             "embeddings_created": embedding_count,
-            "global_tags": len(global_tags),
-            "tags": global_tags
+            "facts_processed": len(existing_facts),
+            "dossiers_created": dossier_count if self.dossier_governor else 0
         }
     
     def _load_bridge_block(self, block_id: str) -> Dict[str, Any]:

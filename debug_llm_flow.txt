@@ -2,15 +2,15 @@
 DEBUG: LLM FLOW FOR QUERY
 ================================================================================
 
-QUERY: what was the most recent time i gave you any information about whether i did or did not have a fear of spiders
+QUERY: im looking to find a piano technician to service my Korg B1.
 
 
 ================================================================================
 FINAL PACKAGE SENT TO ENDPOINT LLM
 ================================================================================
 
-Prompt Length: 2627 characters
-Prompt Token Estimate: ~656 tokens
+Prompt Length: 1879 characters
+Prompt Token Estimate: ~469 tokens
 
 --- FULL PROMPT START ---
 
@@ -30,40 +30,31 @@ IMPORTANT: Constraints marked with 'Severity: strict' MUST be enforced in ALL re
 </user_glossary>
 
 === CURRENT TOPIC ===
-Topic: Fear of Spiders
-Summary: User has a severe fear of spiders and may need support or advice on managing it.
-Keywords: fear, spiders, phobia, comfort, management
-Conversation History (2 turns):
-
-[Turn 1] 2025-12-11T14:13:52.560475
-User: i have a sever fear of spiders
-Assistant: I'm sorry to hear that you have a severe fear of spiders. If you'd like, I can provide some tips to help manage that fear, or we can talk about other ways to make you feel more comfortable. Just let me know how you'd like to proceed.
-
-[Turn 2] 2025-12-11T14:17:08.705635
-User: i no longer have an extreme fear of spiders
-Assistant: That's great to hear that your fear of spiders has lessened! If you'd like, I can help with tips to continue building comfort around them, or we can talk about anything else you're interested in. Just let me know!
+Topic: General Discussion
+Conversation History (0 turns):
 
 === CURRENT MESSAGE ===
-User: what was the most recent time i gave you any information about whether i did or did not have a fear of spiders
+User: im looking to find a piano technician to service my Korg B1.
 
 === BRIDGE BLOCK METADATA INSTRUCTIONS ===
-🔄 TOPIC CONTINUATION/RESUMPTION
+🆕 NEW TOPIC DETECTED
 
-After providing your response, review the current Bridge Block metadata above.
-If any metadata needs updating (new keywords discovered, open loops resolved, etc.),
-return an UPDATED JSON object with the same schema:
+After providing your response, you MUST generate the Bridge Block header metadata.
+Analyze the conversation and return a JSON object with:
 
 ```json
 {
-  "topic_label": "Fear of Spiders",
-  "keywords": ["fear", "spiders", "phobia", "comfort", "management"],
-  "summary": "User has a severe fear of spiders and may need support or advice on managing it.",
-  "open_loops": [],
-  "decisions_made": []
+  "topic_label": "Concise topic name (3-7 words)",
+  "keywords": ["key", "terms", "for", "routing"],  // 3-7 keywords
+  "summary": "One sentence summary of what we're discussing",
+  "open_loops": ["Things to follow up on"],  // Optional
+  "decisions_made": ["Key decisions or conclusions"],  // Optional
+  "user_affect": "[T1-T4] Emotional tone",  // Optional
+  "bot_persona": "Role you're playing"  // Optional
 }
 ```
 
-Only return this JSON if you made changes. If no updates needed, omit it.
+Return this JSON in a clearly marked code block after your response.
 
 
 --- FULL PROMPT END ---

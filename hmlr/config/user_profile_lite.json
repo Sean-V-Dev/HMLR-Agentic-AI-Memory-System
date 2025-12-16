@@ -1,9 +1,16 @@
 {
   "version": "1.0",
-  "last_updated": "2025-12-11T14:17:07.684714",
+  "last_updated": "2025-12-15T19:18:18.502831",
   "glossary": {
     "projects": [],
-    "entities": [],
+    "entities": [
+      {
+        "key": "Korg B1",
+        "type": "Asset",
+        "description": "User's digital piano model Korg B1",
+        "updated": "12/15/2025 19:18:11"
+      }
+    ],
     "constraints": [
       {
         "key": "vegetarian_diet",
