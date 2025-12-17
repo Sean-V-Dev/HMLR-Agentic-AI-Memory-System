@@ -60,7 +60,7 @@ class ManualGardener:
         self.dossier_governor = dossier_governor
         self.dossier_storage = dossier_storage
     
-    def process_bridge_block(self, block_id: str) -> Dict[str, Any]:
+    async def process_bridge_block(self, block_id: str) -> Dict[str, Any]:
         """
         Process a Bridge Block with Phase 2 Dual-Output Flow.
         
@@ -117,8 +117,7 @@ class ManualGardener:
         
         # 3. TAGGING PASS: Classify facts using three heuristics
         print(f"\n   🏷️  Classifying facts (Environment/Constraint/Definition heuristics)...")
-        import asyncio
-        classification = asyncio.run(self._classify_facts_for_tagging(existing_facts))
+        classification = await self._classify_facts_for_tagging(existing_facts)
         
         # 4. Apply tags to block metadata (NOT to chunks)
         global_tags = classification.get('global_tags', [])
@@ -140,16 +139,17 @@ class ManualGardener:
         else:
             print(f"   ℹ️  No tags identified for this block")
         
-        # 5. DOSSIER PASS: Group remaining facts semantically
-        dossier_facts = classification.get('dossier_facts', [])
+        # 5. DOSSIER PASS: ALL facts go to dossiers (dual-output system!)
+        # Even tagged facts should be in dossiers for narrative context
+        all_fact_texts = [f.get('value', '') for f in existing_facts]
         dossier_count = 0
         
-        if dossier_facts and self.dossier_governor:
-            print(f"\n   🗂️  Processing {len(dossier_facts)} facts into dossiers...")
+        if all_fact_texts and self.dossier_governor:
+            print(f"\n   🗂️  Processing {len(all_fact_texts)} facts into dossiers...")
             
             # Prepare facts for semantic grouping
             fact_list = []
-            for fact_text in dossier_facts:
+            for fact_text in all_fact_texts:
                 # Find original fact to get metadata
                 original_fact = next((f for f in existing_facts if f.get('value') == fact_text), {})
                 fact_list.append({
@@ -159,10 +159,9 @@ class ManualGardener:
                     'turn_id': original_fact.get('turn_id', '')
                 })
             
-            # Group facts semantically
+            # 6. Route groups to dossier governor (async)
             fact_groups = await self._group_facts_semantically(fact_list)
             
-            # 6. Route each group to dossier governor
             for group in fact_groups:
                 fact_packet = {
                     'cluster_label': group['label'],
@@ -292,8 +291,8 @@ Return JSON:
 Classification:"""
         
         try:
-            response = await self.llm_client.query_external_api(
-                prompt=prompt,
+            response = self.llm_client.query_external_api(
+                query=prompt,
                 model="gpt-4.1-mini"
             )
             
@@ -401,8 +400,8 @@ Return as JSON array:
 Groups:"""
         
         try:
-            response = await self.llm_client.query_external_api(
-                prompt=prompt,
+            response = self.llm_client.query_external_api(
+                query=prompt,
                 model="gpt-4.1-mini"
             )
             

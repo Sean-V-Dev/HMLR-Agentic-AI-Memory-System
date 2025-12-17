@@ -735,10 +735,10 @@ Return JSON:
         with self.tracer.start_as_current_span("governor.retrieve_dossiers") as span:
             span.set_attribute("dossier_retrieval.query", query)
             
-            # Retrieve top-k dossiers with threshold filtering
+            # Retrieve ALL matching dossiers above threshold (no top_k limit)
             dossiers = self.dossier_retriever.retrieve_relevant_dossiers(
                 query=query,
-                top_k=3,
+                top_k=None,  # No limit - return all matching dossiers
                 threshold=0.4
             )
             

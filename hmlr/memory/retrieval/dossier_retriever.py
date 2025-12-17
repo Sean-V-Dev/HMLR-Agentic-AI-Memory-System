@@ -63,7 +63,7 @@ class DossierRetriever:
         
         Args:
             query: Query text to search for
-            top_k: Maximum number of dossiers to return
+            top_k: Maximum number of dossiers to return (None = return all matching)
             threshold: Minimum similarity score (0-1, default 0.4)
         
         Returns:
@@ -91,52 +91,61 @@ class DossierRetriever:
         """
         logger.debug(f"Searching for dossiers matching query: '{query[:50]}...'")
         
-        # 1. Search fact embeddings
+        # 1. Search fact-level embeddings (MULTI-VECTOR VOTING)
+        # Each fact match votes for its parent dossier
         fact_results = self.dossier_storage.search_similar_facts(
             query=query,
-            top_k=top_k * 3,  # Get more facts to ensure we have enough dossiers after dedup
-            threshold=threshold
+            top_k=100,  # Get many facts to enable hit-count voting
+            threshold=0.4
         )
         
         if not fact_results:
             logger.debug("No matching facts found")
             return []
         
-        logger.debug(f"Found {len(fact_results)} matching facts")
+        # 2. Aggregate by dossier (Multi-Vector Voting)
+        # Count how many facts from each dossier matched
+        dossier_hits = {}
+        dossier_max_scores = {}
         
-        # 2. Deduplicate by dossier_id and keep highest score per dossier
-        dossier_scores = {}  # {dossier_id: max_score}
         for fact_id, dossier_id, score in fact_results:
-            if dossier_id not in dossier_scores:
-                dossier_scores[dossier_id] = score
-            else:
-                dossier_scores[dossier_id] = max(dossier_scores[dossier_id], score)
+            if dossier_id not in dossier_hits:
+                dossier_hits[dossier_id] = 0
+                dossier_max_scores[dossier_id] = 0.0
+            dossier_hits[dossier_id] += 1
+            dossier_max_scores[dossier_id] = max(dossier_max_scores[dossier_id], score)
         
-        # Sort by score and take top K
-        top_dossiers = sorted(
-            dossier_scores.items(),
-            key=lambda x: x[1],
+        logger.debug(f"Found {len(fact_results)} matching facts across {len(dossier_hits)} dossiers")
+        
+        # 3. Rank dossiers by hit count (primary) and max score (secondary)
+        sorted_dossiers = sorted(
+            dossier_hits.items(),
+            key=lambda x: (x[1], dossier_max_scores[x[0]]),  # Sort by hits, then score
             reverse=True
-        )[:top_k]
+        )
         
-        logger.debug(f"Deduplicated to {len(top_dossiers)} unique dossiers")
+        # Apply top_k limit if specified, otherwise return all
+        top_dossiers = sorted_dossiers[:top_k] if top_k else sorted_dossiers
         
-        # 3. Get full dossier details
+        # 4. Get full dossier details
         dossiers = []
-        for dossier_id, score in top_dossiers:
+        for dossier_id, hit_count in top_dossiers:
             dossier = self.storage.get_dossier(dossier_id)
             if dossier:
                 facts = self.storage.get_dossier_facts(dossier_id)
+                max_score = dossier_max_scores[dossier_id]
                 dossiers.append({
                     'dossier_id': dossier_id,
                     'title': dossier['title'],
                     'summary': dossier['summary'],
                     'facts': facts,  # Full fact objects with metadata
-                    'score': score,
+                    'hit_count': hit_count,  # How many facts matched
+                    'max_similarity': max_score,  # Highest fact similarity
+                    'retrieval_score': max_score,  # For backward compatibility
                     'created_at': dossier['created_at'],
                     'last_updated': dossier['last_updated']
                 })
-                logger.debug(f"  Retrieved dossier: {dossier['title']} ({len(facts)} facts, score: {score:.3f})")
+                logger.debug(f"  Retrieved dossier: {dossier['title']} ({len(facts)} facts, {hit_count} hits, max score: {max_score:.3f})")
         
         logger.info(f"Retrieved {len(dossiers)} relevant dossiers")
         return dossiers

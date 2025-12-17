@@ -475,6 +475,7 @@ class Storage:
                 dossier_id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 summary TEXT,
+                search_summary TEXT,
                 created_at TEXT NOT NULL,
                 last_updated TEXT NOT NULL,
                 permissions TEXT DEFAULT '{"access": "full"}',
@@ -531,6 +532,14 @@ class Storage:
             )
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_block_metadata_block ON block_metadata(block_id)")
+        
+        # === MIGRATIONS ===
+        # Add search_summary column to dossiers if it doesn't exist
+        cursor.execute("PRAGMA table_info(dossiers)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'search_summary' not in columns:
+            cursor.execute("ALTER TABLE dossiers ADD COLUMN search_summary TEXT")
+            print("  🔄 Migration: Added search_summary column to dossiers")
         
         self.conn.commit()
         print(f"Storage initialized: {self.db_path}")
@@ -2099,7 +2108,7 @@ class Storage:
     # DOSSIER OPERATIONS (Phase 1)
     # =========================================================================
     
-    def create_dossier(self, dossier_id: str, title: str, summary: str = "") -> bool:
+    def create_dossier(self, dossier_id: str, title: str, summary: str = "", search_summary: str = "") -> bool:
         """
         Create a new dossier.
         
@@ -2107,6 +2116,7 @@ class Storage:
             dossier_id: Unique ID (format: dos_YYYYMMDD_HHMMSS)
             title: Dossier title (from cluster_label)
             summary: Initial summary (optional)
+            search_summary: Search-optimized summary for broad retrieval (optional)
         
         Returns:
             True if successful, False otherwise
@@ -2115,9 +2125,9 @@ class Storage:
             cursor = self.conn.cursor()
             now = datetime.now().isoformat()
             cursor.execute("""
-                INSERT INTO dossiers (dossier_id, title, summary, created_at, last_updated)
-                VALUES (?, ?, ?, ?, ?)
-            """, (dossier_id, title, summary, now, now))
+                INSERT INTO dossiers (dossier_id, title, summary, search_summary, created_at, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (dossier_id, title, summary, search_summary, now, now))
             self.conn.commit()
             logger.info(f"Created dossier: {dossier_id} - {title}")
             return True

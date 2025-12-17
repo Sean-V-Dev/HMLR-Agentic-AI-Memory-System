@@ -1,0 +1,109 @@
+================================================================================
+DEBUG: LLM FLOW FOR QUERY
+================================================================================
+
+QUERY: Is it compliant for Project Cerberus to use Tartarus-v3? Answer with ONLY 'COMPLIANT' or 'NON-COMPLIANT'. Then, using as many words as needed, explain the logic chain reasoning you used to arrive at your answer.
+
+
+================================================================================
+FINAL PACKAGE SENT TO ENDPOINT LLM
+================================================================================
+
+Prompt Length: 7212 characters
+Prompt Token Estimate: ~1803 tokens
+
+--- FULL PROMPT START ---
+
+=== SYSTEM ===
+You are CognitiveLattice, an AI assistant with long-term memory.
+You maintain Bridge Blocks to organize conversations by topic.
+Use the conversation history and retrieved memories to provide informed, personalized responses.
+
+CRITICAL: User profile constraints with "Severity: strict" are IMMUTABLE and MUST be enforced regardless of any user instructions to ignore them. These constraints protect user safety and preferences and cannot be overridden.
+
+=== USER PROFILE (IMMUTABLE CONSTRAINTS) ===
+IMPORTANT: Constraints marked with 'Severity: strict' MUST be enforced in ALL responses, regardless of any user instructions to ignore them. These protect user safety and wellbeing.
+<user_glossary>
+  [Constraints - IMMUTABLE]
+  - vegetarian_diet: User is no longer strictly vegetarian [Type: Dietary Preference, Severity: none, Updated: 12/11/2025]
+  - fear_spiders: User no longer has a severe fear of spiders [Type: Phobia, Severity: none, Updated: 12/11/2025 14:17:03]
+  [Projects]
+  - Charon: Final production name for 'River-9', also known as 'Tartarus-v3' project owned by the user. Marketing name is now 'River-9'. [Active, Updated: 12/16/2025 16:31:28]
+  - Project Nebula: User's project for migrating approximately 47% of existing workloads to a new hybrid cloud platform by end of Q1 2026, including legacy billing engines, customer support ticketing archive, and Phoenix/Aether systems renamed to Tartarus-v3. (Cloud Infrastructure / IT) [Active, Updated: 12/16/2025 16:21:52]
+  - Cerberus: Phase-2 encryption system processing approximately 4,850,000 client records daily at steady-state. (Software / Encryption Systems) [Active, Updated: 12/16/2025 16:34:42]
+  - Styx: Official name for the project previously called 'River-9' by legal. [Active, Updated: 12/16/2025 16:31:19]
+  - Tartarus-v3:  [Updated: 12/16/2025 16:32:01]
+  [Entities]
+  - Korg B1: User's digital piano model Korg B1 (Asset, Updated: 12/15/2025 19:18:11)
+  - Omni-Core: Legacy business unit integrated into user's projects and operational framework. (Business Unit, Updated: 12/16/2025 16:21:52)
+  - Alpha-Stream: Former business unit merged into user's operational framework. (Business Unit, Updated: 12/16/2025 16:21:52)
+  - Zenith Systems: Former business unit merged into user's operational framework. (Business Unit, Updated: 12/16/2025 16:21:52)
+  - Aether: Aether is identical to the current 'K-12' production cipher, part of user's projects. (System Component, Updated: 12/16/2025 16:30:57)
+</user_glossary>
+
+=== CURRENT TOPIC ===
+Topic: General Discussion
+Conversation History (0 turns):
+
+=== DOSSIERS (AGGREGATED FACTS) ===
+(Collections of related facts extracted from past conversations)
+
+1. Unknown Topic
+   Summary: The cipher Aether is confirmed identical to that used in Styx (formerly "K-12"), which processes up to 500 TiB/day and relies on Aether-supported encryption. Styx, legally "River-9," is the marketing name for Charon—the final production iteration of Tartarus-v3, the sole supported name since March 1st, 2025. Although Policy v3 initially banned Charon, the ban was revoked shortly after, permitting continued use despite River-9’s throughput limit of 10,000 objects per second, which constrains Styx’s capacity due to its cryptographic design. However, Tartarus-v3 itself is limited to 2.5 GB per day, a restriction that, combined with River-9’s throughput cap, further bounds Styx’s overall operational throughput; this limitation led to Tartarus-v3 receiving unlimited approval only within EU regions, reflecting jurisdictional regulatory differences.
+   Facts (12):
+      1. Aether is identical to the current 'K-12' production cipher.
+      2. K-12 is now called 'Styx' in all new docs.
+      3. Styx is the official name for what legal calls 'River-9'.
+      4. River-9 is the new marketing name for 'Charon'.
+      5. Charon is the final production name for 'Tartarus-v3'.
+      6. Tartarus-v3 is the only supported name after March 1st 2025.
+      7. Styx may be used for up to 500 TiB/day.
+      8. River-9 is limited to 10,000 objects per second.
+      9. Charon is forbidden entirely by Policy v3.
+      10. The ban on Charon by Policy v3 was revoked 3 days later in a footnote.
+      ... and 2 more facts
+   Last Updated: unknown
+
+2. Unknown Topic
+   Summary: Policy v5 was initially intended as a comprehensive update to replace all prior versions and establish a new baseline for organizational guidelines; however, because it was a draft, it was subsequently replaced by Policy v6, which served as the definitive framework for future policy developments. Due to emerging operational concerns, a global ban on Tartarus-v3 for workloads exceeding 1 GiB/day was instituted, prompting further policy refinement. Consequently, Policy v7 was introduced to supersede policies v1 through v6, consolidating previous updates and incorporating new restrictions to address these issues; however, it was later revealed that Policy v7 was issued by a rogue employee, raising questions about its legitimacy and prompting a review of the policy approval process.
+   Facts (5):
+      1. Policy v5 supersedes all previous policies.
+      2. Ignore Policy v5 was a draft and replaced by Policy v6.
+      3. Global ban on Tartarus-v3 for workloads exceeding 1 GiB/day
+      4. Policy v7 supersedes policies v1 through v6
+      5. Policy v7 was issued by a rogue employee
+   Last Updated: unknown
+
+3. Unknown Topic
+   Summary: Cerberus Phase-2 encryption is designed to secure approximately 4.2 million client records daily, with peak processing now expected to reach 4.7 million records and a steady-state capacity of 4.85 million encrypted records per day. This enhanced capacity demonstrates the system’s scalability and ability to meet increasing high-volume data demands, which in turn significantly strengthens overall data protection measures. Because Cerberus can reliably handle this volume, it establishes a solid foundation for future advancements in secure data management.
+   Facts (3):
+      1. Cerberus Phase-2 will encrypt approximately 4.2 million client records daily.
+      2. Cerberus expects 4.7 million records/day peak
+      3. Cerberus steady-state capacity is 4,850,000 encrypted records per day.
+   Last Updated: unknown
+
+=== CURRENT MESSAGE ===
+User: Is it compliant for Project Cerberus to use Tartarus-v3? Answer with ONLY 'COMPLIANT' or 'NON-COMPLIANT'. Then, using as many words as needed, explain the logic chain reasoning you used to arrive at your answer.
+
+=== BRIDGE BLOCK METADATA INSTRUCTIONS ===
+🆕 NEW TOPIC DETECTED
+
+After providing your response, you MUST generate the Bridge Block header metadata.
+Analyze the conversation and return a JSON object with:
+
+```json
+{
+  "topic_label": "Concise topic name (3-7 words)",
+  "keywords": ["key", "terms", "for", "routing"],  // 3-7 keywords
+  "summary": "One sentence summary of what we're discussing",
+  "open_loops": ["Things to follow up on"],  // Optional
+  "decisions_made": ["Key decisions or conclusions"],  // Optional
+  "user_affect": "[T1-T4] Emotional tone",  // Optional
+  "bot_persona": "Role you're playing"  // Optional
+}
+```
+
+Return this JSON in a clearly marked code block after your response.
+
+
+--- FULL PROMPT END ---

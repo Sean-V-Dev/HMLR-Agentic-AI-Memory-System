@@ -256,8 +256,8 @@ Return JSON:
 Decision:"""
         
         try:
-            response = await self.llm_client.query_external_api(
-                prompt=prompt,
+            response = self.llm_client.query_external_api(
+                query=prompt,
                 model="gpt-4.1-mini"
             )
             
@@ -356,21 +356,26 @@ Decision:"""
         dossier_id = self.id_generator.generate_id("dos")
         logger.info(f"Creating new dossier: {dossier_id} - {title}")
         
-        # 1. Generate initial summary
+        # 1. Generate summaries
         summary = await self._generate_summary(facts, title)
+        search_summary = await self._generate_search_summary(facts, title, summary)
         
         # 2. Create dossier
         success = self.storage.create_dossier(
             dossier_id=dossier_id,
             title=title,
-            summary=summary
+            summary=summary,
+            search_summary=search_summary
         )
         
         if not success:
             logger.error(f"Failed to create dossier {dossier_id}")
             return None
         
-        # 3. Add facts
+        # 3. Embed search summary for broad retrieval
+        self.dossier_storage.save_dossier_search_embedding(dossier_id, search_summary)
+        
+        # 4. Add facts
         for fact_text in facts:
             fact_id = self.id_generator.generate_id("fact")
             
@@ -382,7 +387,7 @@ Decision:"""
                 confidence=1.0
             )
             
-            # 4. Embed fact
+            # Embed fact (for fine-grained matching in Multi-Vector Voting)
             self.dossier_storage.save_fact_embedding(fact_id, dossier_id, fact_text)
             
             logger.debug(f"  Added fact {fact_id}: {fact_text[:50]}...")
@@ -434,8 +439,8 @@ INSTRUCTIONS:
 UPDATED SUMMARY:"""
         
         try:
-            new_summary = await self.llm_client.query_external_api(
-                prompt=prompt,
+            new_summary = self.llm_client.query_external_api(
+                query=prompt,
                 model="gpt-4.1-mini"
             )
             
@@ -488,8 +493,8 @@ Generate a 2-3 sentence summary that:
 SUMMARY:"""
         
         try:
-            summary = await self.llm_client.query_external_api(
-                prompt=prompt,
+            summary = self.llm_client.query_external_api(
+                query=prompt,
                 model="gpt-4.1-mini"
             )
             
@@ -503,3 +508,66 @@ SUMMARY:"""
             logger.error(f"Failed to generate summary: {e}")
             # Fallback: concatenate facts
             return f"{title}: " + "; ".join(facts[:3])
+    
+    async def _generate_search_summary(self, facts: List[str], title: str, summary: str) -> str:
+        """
+        Generate search-optimized summary for broad topic retrieval.
+        
+        This text is specifically designed to match general queries. It should:
+        - Be broader and more general than individual facts
+        - Include topic keywords and related concepts
+        - Capture the "what this is about" at a high level
+        
+        Example:
+            Facts: ["Tesla Model 3 is an electric sedan", "Has 300 mile range"]
+            Search Summary: "User's Tesla Model 3 electric vehicle - sedan for daily commuting and transportation with long range capability and autopilot features"
+        
+        This allows broad queries like "which car for family trip" to match, then
+        the LLM can examine the specific facts to make the final decision.
+        
+        Args:
+            facts: All facts in the dossier
+            title: Dossier title
+            summary: Already-generated detailed summary
+        
+        Returns:
+            Search-optimized summary text
+        """
+        prompt = f"""Generate a SEARCH-OPTIMIZED summary for semantic retrieval.
+
+TITLE: {title}
+SUMMARY: {summary}
+
+FACTS:
+{json.dumps(facts, indent=2)}
+
+Create a search summary that:
+1. Uses BROAD, GENERAL language (not narrow/specific)
+2. Includes TOPIC KEYWORDS and related concepts
+3. Captures "what this is about" at a high level
+4. Would match general queries about this subject
+5. Keep it to 2-3 sentences maximum
+
+Example:
+Input: Facts about "Tesla Model 3 is electric", "has 300 mile range"
+Output: "User's Tesla Model 3 electric vehicle for personal transportation, daily commuting and travel. Electric sedan with long-range capability, autopilot technology, and modern features for efficient driving."
+
+SEARCH SUMMARY:"""
+        
+        try:
+            search_summary = self.llm_client.query_external_api(
+                query=prompt,
+                model="gpt-4.1-mini"
+            )
+            
+            search_summary = search_summary.strip()
+            if search_summary.startswith("SEARCH SUMMARY:"):
+                search_summary = search_summary[15:].strip()
+            
+            logger.debug(f"Generated search summary: {search_summary[:80]}...")
+            return search_summary
+        
+        except Exception as e:
+            logger.error(f"Failed to generate search summary: {e}")
+            # Fallback: use title + summary
+            return f"{title}. {summary}"

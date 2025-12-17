@@ -1,8 +1,74 @@
 # Manual Gardener Refactor - Phase 2 TODO List
 
-**Date:** December 15, 2025  
+**Date:** December 15, 2025 (Updated: December 16, 2025)  
 **Current File:** `hmlr/memory/gardener/manual_gardener.py`  
 **Status:** Partially complete - needs major refactoring
+
+---
+
+## ✅ EMBEDDING MODEL: Unified Across All Systems
+
+**Decision (Dec 16, 2025):** Use `Snowflake/snowflake-arctic-embed-l` (1024D) everywhere.
+
+**Rationale:**
+- Query embedding can be shared across memory and dossier retrieval
+- Fast enough for production (~60ms per query)
+- Excellent accuracy (0.75+ cosine similarity)
+- No dimension mismatch issues
+
+**Updated Files:**
+- `hmlr/memory/embeddings/embedding_manager.py` - Memory/topics (384D → 1024D)
+- `hmlr/memory/dossier_storage.py` - Dossier facts (default: 1024D)
+
+**Performance Impact:**
+- Single query embedding reused for all retrieval systems
+- Write-side (gardening): Can be slow, user not waiting
+- Read-side (queries): 55-68ms per query (acceptable)
+
+---
+
+## 🔮 FUTURE ENHANCEMENT: Long Query Chunking (NOT FOR PHASE 2)
+
+**Problem Identified:** 
+Long queries (like pasted emails or lengthy questions) can overwhelm the embedding model's context window or cause accuracy loss due to excessive tokens diluting the semantic signal.
+
+**Example:**
+- Hydra test email with 9 different requests
+- One critical detail buried in a parenthetical
+- Entire email as single embedding: parenthetical gets lost in noise OR cut off
+
+**Solution Architecture:**
+Treat exceptionally long queries like memory storage - chunk and embed separately.
+
+```
+Long Query (>512 tokens):
+├─ Detect: Query length exceeds threshold
+├─ Chunk: Split into paragraphs/sentences (same as memory storage)
+├─ Embed: Each chunk gets its own embedding
+├─ Search: Query with ALL chunk embeddings in parallel
+└─ Aggregate: Collect results from all chunks (Multi-Vector Voting)
+```
+
+**Performance Strategy:**
+- **Cloud:** Fire parallel serverless compute (Lambda, Cloud Functions)
+  - Wait for slowest chunk to return (~same time as single query)
+- **Local:** Parallelize with ThreadPoolExecutor or asyncio
+  - Modern CPUs can handle multiple embedding tasks concurrently
+  - Model inference is often I/O bound, not CPU bound
+  - Parallelism factor: 4-8 chunks simultaneously on typical hardware
+
+**Implementation Notes:**
+- Reuse existing chunking logic from memory storage (paragraph/sentence level)
+- Snowflake-l model: 512 token max input → chunk at ~400 tokens for safety
+- Aggregate results: Deduplicate by dossier_id, rank by total hits
+- Only applies to queries >512 tokens (rare in natural usage)
+- Users pasting large content pay the time cost (acceptable)
+
+**Priority:** Post-Phase 2 (once core dossier system is stable)
+
+**Related Files:**
+- `hmlr/memory/chunking/` - existing chunking logic
+- `hmlr/memory/retrieval/dossier_retriever.py` - add chunk-aware query handling
 
 ---
 

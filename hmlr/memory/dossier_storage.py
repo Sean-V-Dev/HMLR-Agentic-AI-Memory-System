@@ -29,29 +29,36 @@ class DossierEmbeddingStorage:
     dossier can be retrieved and provided as context.
     
     Architecture:
-    - Embedding Model: all-MiniLM-L6-v2 (384D, same as memory system)
+    - Embedding Model: snowflake-arctic-embed-l (1024D, best accuracy)
     - Storage: SQLite table dossier_fact_embeddings
     - Search: Cosine similarity with configurable threshold (default 0.4)
     """
     
-    def __init__(self, db_path: str, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self, 
+                 db_path: str, 
+                 model_name: str = 'Snowflake/snowflake-arctic-embed-l'):
         """
         Initialize dossier embedding storage.
         
         Args:
             db_path: Path to SQLite database (same as main storage)
-            model_name: SentenceTransformer model name
+            model_name: Model for embedding and search (same model for both)
         """
         self.db_path = db_path
         self.model_name = model_name
+        
+        # Load model (used for both embedding and search)
         self.model = SentenceTransformer(model_name)
+        
         self._initialize_table()
         logger.info(f"DossierEmbeddingStorage initialized with model: {model_name}")
     
     def _initialize_table(self):
-        """Create dossier_fact_embeddings table if it doesn't exist."""
+        """Create embedding tables if they don't exist."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+        
+        # Fact-level embeddings (existing)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS dossier_fact_embeddings (
                 fact_id TEXT PRIMARY KEY,
@@ -63,9 +70,20 @@ class DossierEmbeddingStorage:
             )
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_dfe_dossier ON dossier_fact_embeddings(dossier_id)")
+        
+        # Dossier-level search embeddings (NEW - for broad topic matching)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dossier_search_embeddings (
+                dossier_id TEXT PRIMARY KEY,
+                embedding BLOB NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (dossier_id) REFERENCES dossiers(dossier_id) ON DELETE CASCADE
+            )
+        """)
+        
         conn.commit()
         conn.close()
-        logger.debug("Dossier fact embeddings table initialized")
+        logger.debug("Dossier embedding tables initialized")
     
     def save_fact_embedding(self, fact_id: str, dossier_id: str, fact_text: str) -> bool:
         """
@@ -100,6 +118,44 @@ class DossierEmbeddingStorage:
             
         except Exception as e:
             logger.error(f"Failed to save fact embedding for {fact_id}: {e}")
+            return False
+    
+    def save_dossier_search_embedding(self, dossier_id: str, search_summary: str) -> bool:
+        """
+        Embed and store dossier-level search summary for broad topic matching.
+        
+        This enables broad retrieval like "which car for family trip" to match
+        dossiers with search_summary containing general concepts about vehicles,
+        transportation, family use, etc.
+        
+        Args:
+            dossier_id: Dossier ID
+            search_summary: Search-optimized summary text
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Generate embedding
+            embedding = self.model.encode(search_summary)
+            embedding_blob = embedding.astype(np.float32).tobytes()
+            
+            # Store in database
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO dossier_search_embeddings 
+                (dossier_id, embedding, created_at)
+                VALUES (?, ?, ?)
+            """, (dossier_id, embedding_blob, datetime.now().isoformat()))
+            conn.commit()
+            conn.close()
+            
+            logger.debug(f"Embedded search summary for dossier {dossier_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save dossier search embedding for {dossier_id}: {e}")
             return False
     
     def search_similar_facts(
@@ -167,6 +223,66 @@ class DossierEmbeddingStorage:
             
         except Exception as e:
             logger.error(f"Failed to search similar facts: {e}")
+            return []
+    
+    def search_similar_dossiers(
+        self,
+        query: str,
+        top_k: int = 10,
+        threshold: float = 0.3
+    ) -> List[Tuple[str, float]]:
+        """
+        Search for dossiers using search_summary embeddings (broad topic matching).
+        
+        This provides STAGE 1 retrieval - get ALL relevant dossiers based on broad
+        topic similarity. Then the LLM can examine facts and make final selection.
+        
+        Args:
+            query: Query text to search for
+            top_k: Maximum number of results to return
+            threshold: Minimum similarity score (0-1, default 0.3 - lower for broad matching)
+        
+        Returns:
+            List of tuples: (dossier_id, similarity_score)
+            Ordered by similarity score descending
+        """
+        try:
+            # Encode query
+            query_embedding = self.model.encode(query)
+            
+            # Get all dossier search embeddings
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT dossier_id, embedding FROM dossier_search_embeddings")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            if not rows:
+                logger.debug("No dossier search embeddings found")
+                return []
+            
+            # Compute similarities
+            results = []
+            for dossier_id, embedding_blob in rows:
+                dossier_embedding = np.frombuffer(embedding_blob, dtype=np.float32)
+                
+                # Cosine similarity
+                similarity = np.dot(query_embedding, dossier_embedding) / (
+                    np.linalg.norm(query_embedding) * np.linalg.norm(dossier_embedding)
+                )
+                
+                if similarity >= threshold:
+                    results.append((dossier_id, float(similarity)))
+            
+            # Sort by similarity descending and limit to top_k
+            results.sort(key=lambda x: x[1], reverse=True)
+            results = results[:top_k]
+            
+            logger.debug(f"Found {len(results)} dossiers above threshold {threshold} for query: '{query[:50]}...'")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to search similar dossiers: {e}")
             return []
     
     def get_dossier_by_fact_id(self, fact_id: str) -> Optional[str]:

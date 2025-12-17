@@ -23,7 +23,7 @@ class EmbeddingManager:
     Manages vector embeddings for conversation turns.
     """
     
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self, model_name: str = 'Snowflake/snowflake-arctic-embed-l'):
         """
         Initialize embedding manager.
         
@@ -31,7 +31,7 @@ class EmbeddingManager:
             model_name: SentenceTransformer model name
         """
         self.model_name = model_name
-        self.dimension = 384  # all-MiniLM-L6-v2 output dimension
+        self.dimension = 1024  # snowflake-arctic-embed-l output dimension
         
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError(
