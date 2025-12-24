@@ -1,5 +1,5 @@
 """
-Context Assembler - Phase 2 Group-by-Block Hydration
+Context Assembler - Group-by-Block Hydration
 
 This module implements the Group-by-Block pattern for retrieving chunks with sticky meta tags.
 
@@ -13,11 +13,6 @@ Hydration Pattern:
 4. Format as headers with chunks underneath
 
 Token Savings Example:
-- OLD WAY (duplicate tags on each chunk):
-  Chunk 1: [env: python-3.9] [os: windows] "Run the command"
-  Chunk 2: [env: python-3.9] [os: windows] "Check the logs"
-  Chunk 3: [env: python-3.9] [os: windows] "Wait for confirmation"
-  Cost: Tags repeated 3 times = 3x token cost
 
 - NEW WAY (group-by-block with header):
   ### Context Block: block_55
@@ -28,8 +23,6 @@ Token Savings Example:
   - "Wait for confirmation"
   Cost: Tags paid ONCE = 1/3rd token cost
 
-Author: CognitiveLattice Team
-Created: 2025-12-16
 """
 
 from typing import List, Dict, Any
@@ -53,32 +46,7 @@ class ContextAssembler:
         self.storage = storage
     
     def hydrate_chunks_with_metadata(self, chunks: List[Dict[str, Any]], include_headers: bool = True) -> str:
-        """
-        Hydrate chunks with their block metadata WITHOUT duplicating tags.
-        
-        Groups chunks by block_id and injects metadata ONCE per block as a header.
-        
-        Args:
-            chunks: List of chunk dictionaries (must have 'block_id' field)
-            include_headers: Whether to include block headers (default True)
-        
-        Returns:
-            Formatted context string with tags grouped by block
-        
-        Example:
-            Input: 5 chunks from block_55, all with env:python-3.9
-            Output:
-                ### Context Block: block_55
-                Active Rules: [env: python-3.9], [os: windows]
-                
-                - Chunk 1: "Run the command"
-                - Chunk 2: "Check the logs"
-                - Chunk 3: "Wait for confirmation"
-                [DEPRECATED] Chunk 4: "Old API call"
-                - Chunk 5: "Verify results"
-            
-            Token Cost: Tags paid ONCE, not 5 times (80% savings)
-        """
+
         if not chunks:
             return ""
         
@@ -144,19 +112,7 @@ class ContextAssembler:
         return "\n".join(context_parts)
     
     def _get_section_tag_for_turn(self, turn_id: str, section_rules: List[Dict]) -> str:
-        """
-        Check if turn_id falls within a section rule range.
-        
-        Args:
-            turn_id: Turn identifier from chunk
-            section_rules: List of section rules with turn ranges
-        
-        Returns:
-            Section tag if turn falls in range, else None
-        
-        Note: This implementation assumes turn_ids can be compared.
-        You may need to extract turn numbers or use timestamps for comparison.
-        """
+
         if not turn_id or not section_rules:
             return None
         
@@ -175,26 +131,7 @@ class ContextAssembler:
         return None
     
     def hydrate_dossiers_with_facts(self, dossiers: List[Dict[str, Any]]) -> str:
-        """
-        Format dossiers with their facts for LLM context.
-        
-        Args:
-            dossiers: List of dossier dictionaries
-        
-        Returns:
-            Formatted dossier context string
-        
-        Example:
-            ### Dossier: Dietary Preferences
-            Summary: User follows vegetarian diet...
-            
-            Facts:
-            - User is vegetarian
-            - User avoids all meat products
-            - User prefers tofu as protein source
-            
-            Last Updated: 2025-12-15
-        """
+
         if not dossiers:
             return ""
         
@@ -269,76 +206,3 @@ class ContextAssembler:
             full_context = full_context[:char_limit] + "\n\n[Context truncated due to token limit]"
         
         return full_context
-
-
-# ============================================================================
-# TESTING
-# ============================================================================
-
-if __name__ == "__main__":
-    print("🧪 Context Assembler Test")
-    print("=" * 60)
-    
-    # Mock storage for testing
-    class MockStorage:
-        def get_block_metadata(self, block_id):
-            """Mock metadata for testing"""
-            if block_id == "block_55":
-                return {
-                    'global_tags': ['env: python-3.9', 'os: windows'],
-                    'section_rules': [
-                        {'start_turn': 'turn_10', 'end_turn': 'turn_15', 'rule': 'DEPRECATED'}
-                    ]
-                }
-            return {'global_tags': [], 'section_rules': []}
-    
-    assembler = ContextAssembler(MockStorage())
-    
-    # Test 1: Group-by-block hydration
-    print("\n1. Testing Group-by-Block Hydration")
-    print("-" * 60)
-    
-    chunks = [
-        {'block_id': 'block_55', 'turn_id': 'turn_08', 'text': 'Run the command'},
-        {'block_id': 'block_55', 'turn_id': 'turn_09', 'text': 'Check the logs'},
-        {'block_id': 'block_55', 'turn_id': 'turn_12', 'text': 'Old API call'},
-        {'block_id': 'block_55', 'turn_id': 'turn_14', 'text': 'Verify results'},
-        {'block_id': 'block_66', 'turn_id': 'turn_20', 'text': 'Different block chunk'},
-    ]
-    
-    context = assembler.hydrate_chunks_with_metadata(chunks)
-    print(context)
-    print("\n✅ Tags applied ONCE per block (not per chunk)")
-    
-    # Test 2: Dossier formatting
-    print("\n2. Testing Dossier Formatting")
-    print("-" * 60)
-    
-    dossiers = [
-        {
-            'dossier_id': 'dos_001',
-            'title': 'Dietary Preferences',
-            'summary': 'User follows vegetarian diet and prefers tofu',
-            'facts': [
-                'User is vegetarian',
-                'User avoids all meat products',
-                'User prefers tofu as protein source'
-            ],
-            'last_updated': '2025-12-15T10:30:00'
-        }
-    ]
-    
-    dossier_context = assembler.hydrate_dossiers_with_facts(dossiers)
-    print(dossier_context)
-    print("\n✅ Dossiers formatted with facts")
-    
-    # Test 3: Full context assembly
-    print("\n3. Testing Full Context Assembly")
-    print("-" * 60)
-    
-    full_context = assembler.assemble_full_context(chunks[:3], dossiers)
-    print(full_context)
-    print("\n✅ Combined dossiers and chunks")
-    
-    print("\n" + "=" * 60)
-    print("✅ All tests passed!")

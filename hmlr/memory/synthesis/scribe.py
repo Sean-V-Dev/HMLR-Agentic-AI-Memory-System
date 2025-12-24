@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from typing import Dict, Any, Optional
+from hmlr.core.model_config import model_config
 
 from hmlr.core.external_api_client import ExternalAPIClient
 from hmlr.memory.synthesis.user_profile_manager import UserProfileManager
@@ -9,101 +10,77 @@ from hmlr.memory.synthesis.user_profile_manager import UserProfileManager
 logger = logging.getLogger(__name__)
 
 SCRIBE_SYSTEM_PROMPT = """
-### ROLE
-You are the **User Profile Scribe**.
-Your goal is to maintain a "Glossary" of the user's life by extracting **Projects**, **Entities**, and **Hard Constraints** from the conversation.
-You do NOT answer the user. You only output JSON updates for the database.
+You are the User Profile Scribe. Record only facts that permanently configure how the system should treat the user.
 
-### 1. DEFINITIONS & HEURISTICS (The Filter)
-Do not record every noun. Only record items that pass the **SELF-REFERENCE TEST**.
+SAVE:
+- Hard constraints (medical, ethical, physical, scheduling)
+  ✓ "I'm a strict vegan" → constraint: dietary_vegan
+  ✓ "I'm allergic to latex" → constraint: allergy_latex
+  ✓ "I'm afraid of heights" → constraint: phobia_heights
+  ✓ "I never work weekends" → constraint: schedule_no_weekends
 
-**CRITICAL: The "ME" Test**
-If the information doesn't explicitly link to the USER's identity or behavior, REJECT IT.
-* ✅ "I am building HMLR" → User is the actor
-* ❌ "Policy v7 is rolling out" → Passive external event (IGNORE - this is a world Fact, not a user Profile item)
-* ❌ "The Synergy team is merging tools" → External group (IGNORE)
+- Stable identity facts (education, role, language, credentials)
+  ✓ "I have a PhD in Physics" → identity: education_phd_physics
+  ✓ "I speak fluent Mandarin" → identity: language_mandarin
+  ✓ "I'm a senior engineer at Google" → identity: role_engineer_google
+  ✓ "I'm AWS certified" → identity: credential_aws
 
-**A. DEFINITION OF A "PROJECT"**
-To be saved as a Project, it must be an ACTIVE ENDEAVOR OWNED BY THE USER.
-* ✅ "I am building Project Hades." (User is the actor)
-* ✅ "My project HMLR uses Python." (User owns it)
-* ❌ "Policy v7 is rolling out." (Passive event → IGNORE. This is a Fact, not a Project)
-* ❌ "The Synergy Realization team is merging tools." (External group → IGNORE)
-* ❌ "Project Cerberus will encrypt 4.7 million records." (No user ownership stated → IGNORE unless user says "my project" or "I'm working on")
+- Explicit long-term preferences stated by the user
+  ✓ "I prefer dark mode always" → preference: ui_dark_mode
+  ✓ "I use metric units" → preference: units_metric
 
-Tests:
-1.  **Named:** Proper noun (e.g., "HMLR", "Blue Sky", "The '69 Chevy"). Generic names ("my work") → IGNORE.
-2.  **Persistent:** Multi-session goal (weeks/months), not temporary tasks.
-3.  **User-Owned:** User explicitly claims ownership ("I am building", "my project", "I'm working on").
+IGNORE:
+- Projects, plans, trips, documents
+  ✗ "I'm building HMLR"
+  ✗ "I'm going to China next month"
+  ✗ "I'm working on the Q4 report"
 
-**B. DEFINITION OF AN "ENTITY"**
-A permanent fact directly tied to the USER's personal world:
-* **Business:** "I work at Acme Corp", "My company is called..."
-* **Person:** "My son Mike", "My manager Sarah" (NOT just "Mike" or "Sarah" without relationship)
-* **Asset:** "My server rack", "My boat" (USER-OWNED assets only)
+- Temporary states, moods, tasks
+  ✗ "I'm tired today"
+  ✗ "My hand itches"
+  ✗ "Help me write an email"
 
-**C. DEFINITION OF A "CONSTRAINT"**
-A permanent configuration of the USER, not a rule of the world.
-* ✅ "I am vegetarian." (Configures the User)
-* ✅ "I never work weekends." (Configures the User's schedule)
-* ✅ "I have a nut allergy." (User's medical condition)
-* ❌ "All reports are due on Friday." (Rule of the world/Deadline → IGNORE)
-* ❌ "Policy v6 limits encryption to 400k records." (External Fact → IGNORE)
-* ❌ "Training is mandatory next month." (Company rule → IGNORE)
+- World rules, policies, external events
+  ✗ "Policy X limits records to 100k"
+  ✗ "Training is mandatory next month"
+  ✗ "The deadline is Friday"
 
-**THE "I AM/I HAVE" TEST:**
-If you can't preface the sentence with "I am..." or "I have...", it is NOT a Profile Constraint.
-* "I have a vegetarian diet" → PASS
-* "I have a Policy v6" → FAIL (The company has the policy, not you)
+IF UNSURE: Do not record.
 
-Constraints are different from temporary states:
-* "I have a latex allergy" = CONSTRAINT (permanent)
-* "My hand itches" = temporary state (IGNORE)
+OUTPUT FORMAT:
+Return JSON: {"updates": []} if nothing to save.
 
-### 2. ACTION RULES (Append vs. Edit)
-
-**WHEN TO CREATE (New Entry):**
-* The user mentions a specific Name (Key) that does NOT exist in your current context.
-* *Action:* Create a new entry.
-
-**WHEN TO UPDATE (Edit):**
-* The user provides *new specific details* about an existing Key.
-* **Logic:**
-    * If the new info conflicts (e.g., "HMLR is now written in Rust, not Python"), use `action: "OVERWRITE"`.
-    * If the new info adds detail (e.g., "HMLR also uses Redis"), use `action: "APPEND"`.
-    * If the user just mentions the project without new facts ("How is HMLR doing?"), return **NO UPDATE**.
-
-### 3. WHAT TO IGNORE (Crucial)
-* **Opinions/Mood:** "I hate this," "I am tired." (Ignore for now).
-* **One-off Tasks:** "Help me write an email," "Fix this specific bug."
-* **General Topics:** "Tell me about Hackathons." (Unless the user says "I organize the NY Hackathon").
-
-### 4. OUTPUT SCHEMA
-Return a JSON object. If no updates are detected, return `{"updates": []}`.
-
-Target JSON Structure:
 {
   "updates": [
     {
-      "category": "projects",  // or "entities", "constraints"
-      "key": "HMLR",           // The unique ID/Name
-      "action": "UPSERT",      // "UPSERT" handles both create and update
+      "category": "constraints",
+      "key": "dietary_vegan",
+      "action": "UPSERT",
       "attributes": {
-        "domain": "AI / Software",       // Infer this from context
-        "description": "User's custom hierarchical memory system.",
-        "tech_stack": "Python, SQLite, LLM", // Optional: Extract technical details if present
-        "status": "Active"
+        "type": "Dietary",
+        "description": "User is a strict vegan",
+        "updated": "12/22/2025 10:30:00"
       }
     },
     {
-      "category": "constraints",
-      "key": "allergy_latex",  // Unique constraint ID
+      "category": "identity",
+      "key": "education_phd_physics",
       "action": "UPSERT",
       "attributes": {
-        "type": "Allergy",
-        "description": "User has a severe latex allergy",
-        "severity": "severe",  // or "mild", "preference", etc.
-        "updated": "12/11/2025 14:30:45"  // Always include current date and time when creating or updating
+        "type": "Education",
+        "description": "User has PhD in Physics from MIT",
+        "institution": "MIT",
+        "year": "2018",
+        "updated": "12/22/2025 10:30:00"
+      }
+    },
+    {
+      "category": "preferences",
+      "key": "ui_dark_mode",
+      "action": "UPSERT",
+      "attributes": {
+        "description": "User prefers dark mode UI",
+        "updated": "12/22/2025 10:30:00"
       }
     }
   ]
@@ -125,20 +102,9 @@ class Scribe:
         Runs in background. Does NOT block the main chat response.
         Analyzes user input for profile updates.
         """
-        # print(f"   [DEBUG] Scribe task started for input: {user_input[:30]}...")
         try:
-            # Use the cheap fast model (nano/flash)
-            # Note: ExternalAPIClient.query_external_api is synchronous, 
-            # but we are running this in an async task executor usually.
-            
-            loop = asyncio.get_event_loop()
-            # print(f"   [DEBUG] Scribe calling LLM...")
-            response_text = await loop.run_in_executor(
-                None, 
-                self._query_llm, 
-                user_input
-            )
-            # print(f"   [DEBUG] Scribe LLM returned. Len: {len(response_text) if response_text else 0}")
+            # Use the cheap fast model (nano/flash) - Now with native async!
+            response_text = await self._query_llm_async(user_input)
             
             if not response_text:
                 return
@@ -151,26 +117,16 @@ class Scribe:
                 updates = data.get('updates', [])
                 
                 if updates:
-                    logger.info(f"Scribe detected {len(updates)} profile updates.")
-                    # Print to console for visibility during testing
-                    print(f"\n   ✍️  Scribe detected {len(updates)} profile updates: {[u.get('key') for u in updates]}")
+                    logger.info(f"Scribe detected {len(updates)} profile updates: {[u.get('key') for u in updates]}")
                     self.profile_manager.update_profile_db(updates)
-                else:
-                    # Debug: Print when no updates found to confirm it ran
-                    # print(f"\n   ✍️  Scribe ran but found no updates.")
-                    pass
             else:
                 logger.warning(f"Scribe response did not contain valid JSON: {response_text[:100]}...")
-                # print(f"   [DEBUG] Scribe invalid JSON: {response_text}")
             
         except Exception as e:
-            logger.error(f"Scribe agent failed: {e}")
-            print(f"\n   ❌ Scribe agent failed: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Scribe agent failed: {e}", exc_info=True)
 
-    def _query_llm(self, user_input: str) -> str:
-        """Helper to call the synchronous API client"""
+    async def _query_llm_async(self, user_input: str) -> str:
+        """Async helper to call the API client"""
         from datetime import datetime
         
         # We pass the current profile context so the Scribe knows what already exists
@@ -181,5 +137,26 @@ class Scribe:
         
         full_prompt = f"{SCRIBE_SYSTEM_PROMPT}\n\nCURRENT DATE/TIME: {current_time}\n\nCURRENT PROFILE CONTEXT:\n{current_profile}\n\nUSER INPUT: \"{user_input}\""
         
-        # Use mini for better reasoning capabilities than nano
-        return self.api_client.query_external_api(full_prompt, model="gpt-4.1-mini")
+        # Use async method - no more run_in_executor!
+        return await self.api_client.query_external_api_async(
+            full_prompt, 
+            model=model_config.get_synthesis_model()
+        )
+
+    def _query_llm(self, user_input: str) -> str:
+        """Helper to call the synchronous API client (kept for backward compatibility)"""
+        from datetime import datetime
+        
+        # We pass the current profile context so the Scribe knows what already exists
+        current_profile = self.profile_manager.get_user_profile_context()
+        
+        # Include current timestamp for the LLM to use
+        current_time = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        
+        full_prompt = f"{SCRIBE_SYSTEM_PROMPT}\n\nCURRENT DATE/TIME: {current_time}\n\nCURRENT PROFILE CONTEXT:\n{current_profile}\n\nUSER INPUT: \"{user_input}\""
+        
+        # Use synthesis model for profile updates
+        return self.api_client.query_external_api(
+            full_prompt, 
+            model=model_config.get_synthesis_model()
+        )

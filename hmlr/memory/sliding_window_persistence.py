@@ -11,6 +11,8 @@ File: memory/sliding_window_state.json
 """
 
 import json
+import logging
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -18,12 +20,25 @@ from dataclasses import asdict
 
 from hmlr.memory.models import ConversationTurn
 
+logger = logging.getLogger(__name__)
+
+
+class SlidingWindowStateError(Exception):
+    """Raised when sliding window state cannot be read or validated."""
+
+
+STATE_VERSION = "1"
+
 
 class SlidingWindowPersistence:
     """Handles saving/loading sliding window state to persistent storage"""
     
-    def __init__(self, state_file: str = "memory/sliding_window_state.json"):
-        self.state_file = Path(state_file)
+    def __init__(self, state_file: Optional[str] = None):
+        """Resolve a writable state file path with env override."""
+        resolved = state_file or os.getenv("HMLR_WINDOW_STATE_PATH")
+        if not resolved:
+            resolved = Path.home() / ".hmlr" / "sliding_window_state.json"
+        self.state_file = Path(resolved)
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
     
     def save_window(self, turns: List[ConversationTurn]) -> None:
@@ -39,6 +54,7 @@ class SlidingWindowPersistence:
             turns: List of ConversationTurn objects in the sliding window
         """
         state = {
+            "version": STATE_VERSION,
             "last_updated": datetime.now().isoformat(),
             "turn_count": len(turns),
             "turns": []
@@ -75,29 +91,32 @@ class SlidingWindowPersistence:
             json.dump(state, f, indent=2)
         
         temp_file.replace(self.state_file)
-        print(f"   💾 Saved sliding window state: {len(turns)} turns")
+        logger.info(f"Saved sliding window state: {len(turns)} turns")
     
     def load_window(self) -> List[ConversationTurn]:
         """
         Load the sliding window state from file.
-        
-        This is called at STARTUP to restore the exact window state
-        from the last session, including compression.
-        
-        Returns:
-            List of ConversationTurn objects (empty if file doesn't exist)
+        Raises SlidingWindowStateError on read/parse/integrity failures.
         """
         if not self.state_file.exists():
-            print(f"   ℹ️  No saved window state found - starting fresh")
+            logger.debug("No saved window state found - starting fresh")
             return []
         
         try:
             with open(self.state_file, 'r', encoding='utf-8') as f:
                 state = json.load(f)
-            
-            turns = []
+        except Exception as e:
+            raise SlidingWindowStateError(f"Failed to read sliding window state: {e}") from e
+
+        version = state.get("version")
+        if version != STATE_VERSION:
+            raise SlidingWindowStateError(
+                f"Sliding window state version mismatch (found={version}, expected={STATE_VERSION})"
+            )
+
+        turns = []
+        try:
             for turn_data in state.get("turns", []):
-                # Reconstruct ConversationTurn from saved data
                 turn = ConversationTurn(
                     turn_id=turn_data["turn_id"],
                     session_id=turn_data["session_id"],
@@ -114,17 +133,15 @@ class SlidingWindowPersistence:
                     assistant_summary=turn_data.get("assistant_summary")
                 )
                 turns.append(turn)
-            
-            print(f"   📂 Loaded sliding window state: {len(turns)} turns")
-            if turns:
-                compressed_count = sum(1 for t in turns if t.detail_level == "COMPRESSED")
-                print(f"      {compressed_count} compressed, {len(turns) - compressed_count} verbatim")
-            
-            return turns
-            
         except Exception as e:
-            print(f"   ⚠️  Error loading window state: {e}")
-            return []
+            raise SlidingWindowStateError(f"Failed to deserialize sliding window state: {e}") from e
+        
+        logger.info(f"Loaded sliding window state: {len(turns)} turns")
+        if turns:
+            compressed_count = sum(1 for t in turns if t.detail_level == "COMPRESSED")
+            logger.debug(f"{compressed_count} compressed, {len(turns) - compressed_count} verbatim")
+        
+        return turns
     
     def clear_window(self) -> None:
         """Clear the saved window state (useful for testing)"""

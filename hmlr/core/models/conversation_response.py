@@ -66,19 +66,6 @@ class ConversationResponse:
     citations_found: int = 0
     context_efficiency: Optional[float] = None
     
-    # Tool information
-    tools_used: Optional[List[str]] = None
-    tool_results: Optional[Dict[str, Any]] = None
-    
-    # Planning session state
-    planning_session_id: Optional[str] = None
-    planning_phase: Optional[str] = None
-    
-    # Task information
-    task_id: Optional[str] = None
-    task_step_number: Optional[int] = None
-    task_completed: bool = False
-    
     # Error information
     error_message: Optional[str] = None
     error_traceback: Optional[str] = None
@@ -109,26 +96,9 @@ class ConversationResponse:
                 "sliding_window_turns": self.sliding_window_turns,
                 "citations_found": self.citations_found,
                 "context_efficiency": self.context_efficiency,
-                "tools_used": self.tools_used or [],
-                "processing_time_ms": self.processing_time_ms
             },
             "timestamp": self.timestamp
         }
-        
-        # Add planning info if present
-        if self.planning_session_id:
-            result["planning"] = {
-                "session_id": self.planning_session_id,
-                "phase": self.planning_phase
-            }
-        
-        # Add task info if present
-        if self.task_id:
-            result["task"] = {
-                "task_id": self.task_id,
-                "step_number": self.task_step_number,
-                "completed": self.task_completed
-            }
         
         # Add error info if present
         if self.error_message:
@@ -149,40 +119,18 @@ class ConversationResponse:
         output = []
         
         if self.status == ResponseStatus.SUCCESS:
-            output.append(f"💬 Response: {self.response_text}")
+            output.append(f"Response: {self.response_text}")
         elif self.status == ResponseStatus.ERROR:
-            output.append(f"❌ Error: {self.error_message}")
+            output.append(f"Error: {self.error_message}")
             if self.error_traceback:
                 output.append(f"\nTraceback:\n{self.error_traceback}")
         elif self.status == ResponseStatus.PARTIAL:
-            output.append(f"⚠️ Partial Response: {self.response_text}")
+            output.append(f"Partial Response: {self.response_text}")
         elif self.status == ResponseStatus.PENDING:
-            output.append(f"⏳ Pending: {self.response_text}")
-        
-        # Add tool info if tools were used
-        if self.tools_used:
-            output.append(f"\n🔧 Tools used: {', '.join(self.tools_used)}")
+            output.append(f"Pending: {self.response_text}")
         
         # Add context efficiency if available
         if self.context_efficiency is not None:
-            output.append(f"\n📊 Context efficiency: {self.context_efficiency:.1f}%")
-        
-        # Add planning session info if present
-        if self.planning_session_id and self.planning_phase:
-            phase_display = {
-                "gathering": "📝 Gathering information",
-                "draft": "📄 Reviewing draft",
-                "verification": "✅ Verification",
-                "approved": "🎉 Plan approved",
-                "cancelled": "❌ Planning cancelled"
-            }.get(self.planning_phase, f"Planning: {self.planning_phase}")
-            output.append(f"\n{phase_display}")
-        
-        # Add task info if present
-        if self.task_id and self.task_step_number:
-            if self.task_completed:
-                output.append(f"\n✅ Task completed!")
-            else:
-                output.append(f"\n🎯 Task step {self.task_step_number} in progress")
+            output.append(f"Context efficiency: {self.context_efficiency:.1f}%")
         
         return "\n".join(output)

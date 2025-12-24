@@ -1,10 +1,10 @@
 """
-HMLR v1 - Hydrator (Phase 11.6 Enhanced)
+HMLR v1 - Hydrator
 
 The Hydrator is responsible for:
 1. Taking a list of approved memory IDs (from The Governor).
 2. Fetching the full content of these memories.
-3. **NEW (Phase 11.6):** Hydrating Bridge Blocks from daily_ledger:
+3. Hydrating Bridge Blocks from daily_ledger:
    - Active Bridge Block (current topic): Load full conversation turns (verbatim)
    - Inactive Bridge Blocks (other topics): Include lightweight metadata summaries
 4. Enforcing the token budget (Context Window Management).
@@ -15,7 +15,7 @@ import logging
 import json
 from typing import List, Dict, Any, Optional
 from hmlr.memory.storage import Storage
-from hmlr.memory.models import SlidingWindow, ConversationTurn
+from hmlr.memory.models import ConversationTurn
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,9 @@ class Hydrator:
         """
         Fetch full content for approved IDs.
         
-        Phase 11.6 Enhancement:
-        - Detects Bridge Block IDs (format: bridge_block_YYYYMMDD_...)
-        - Active block (matching query): Hydrates all conversation turns verbatim
-        - Inactive blocks: Returns metadata placeholders (lightweight)
+        Hydrating Bridge Blocks from daily_ledger:
+        - Active Bridge Block (current topic): Load full conversation turns (verbatim)
+        - Inactive Bridge Blocks (other topics): Include lightweight metadata summaries
         
         Args:
             approved_memory_ids: List of memory IDs approved by Governor
@@ -44,7 +43,7 @@ class Hydrator:
         bridge_blocks = []
         
         for mem_id in approved_memory_ids:
-            # Check if this is a Bridge Block ID (Phase 11.6)
+            # Check if this is a Bridge Block ID
             if mem_id.startswith('bridge_block_') or mem_id.startswith('bb_'):
                 # Extract Bridge Block from daily_ledger
                 bridge_block = self._get_bridge_block(mem_id)
@@ -60,7 +59,7 @@ class Hydrator:
                 else:
                     logger.warning(f"Hydrator could not find memory ID: {mem_id}")
         
-        # Hydrate Bridge Blocks (Phase 11.6)
+        # Hydrate Bridge Blocks
         if bridge_blocks:
             active_block, inactive_blocks = self._identify_active_block(bridge_blocks, query)
             
@@ -248,10 +247,6 @@ Status: {bridge_block.get('status', 'UNKNOWN')}"""
         """
         Format hydrated memories into a context string.
         Enforces token budget.
-        
-        Phase 11.6 Enhancement:
-        - Detects Bridge Block metadata placeholders (from inactive blocks)
-        - Formats them differently (compact summaries vs full turns)
         """
         current_tokens = 0
         

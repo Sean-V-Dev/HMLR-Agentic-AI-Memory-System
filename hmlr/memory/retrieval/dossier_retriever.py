@@ -9,8 +9,6 @@ Architecture:
 - Retrieval: Return full dossiers (all facts) when any fact matches
 - Formatting: Structured context with title, summary, and facts
 
-Author: CognitiveLattice Team
-Created: 2025-12-15 (Phase 4: Dossier System)
 """
 
 import json
@@ -141,7 +139,6 @@ class DossierRetriever:
                     'facts': facts,  # Full fact objects with metadata
                     'hit_count': hit_count,  # How many facts matched
                     'max_similarity': max_score,  # Highest fact similarity
-                    'retrieval_score': max_score,  # For backward compatibility
                     'created_at': dossier['created_at'],
                     'last_updated': dossier['last_updated']
                 })

@@ -7,8 +7,6 @@ A persistent, intelligent memory substrate for CognitiveLattice that enables:
 - Smart context retrieval for LLM injection
 - Pattern recognition and synthesis
 
-Author: CognitiveLattice Team
-Created: 2025-10-10
 """
 
 from .models import (
@@ -16,7 +14,6 @@ from .models import (
     TaskStatus,
     TaskType,
     QueryType,
-    ContextSourceType,
     
     # Core structures
     DayNode,
@@ -27,7 +24,6 @@ from .models import (
     
     # Task management
     TaskState,
-    TaskCommand,
     
     # Retrieval & Intent
     Intent,
@@ -35,7 +31,6 @@ from .models import (
     
     # Conversation
     ConversationTurn,
-    SlidingWindow,
     
     # Planning system
     UserPlan,
@@ -50,6 +45,7 @@ from .models import (
 
 from .storage import Storage
 from .conversation_manager import ConversationManager
+from .sliding_window import SlidingWindow
 
 # NEW: ID generation with lineage tracking
 from .id_generator import (
@@ -76,7 +72,6 @@ __all__ = [
     "TaskStatus",
     "TaskType",
     "QueryType",
-    "ContextSourceType",
     
     # Core structures
     "DayNode",
@@ -87,7 +82,6 @@ __all__ = [
     
     # Task management
     "TaskState",
-    "TaskCommand",
     
     # Retrieval & Intent
     "Intent",

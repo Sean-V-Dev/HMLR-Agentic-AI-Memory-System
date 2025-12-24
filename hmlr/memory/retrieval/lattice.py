@@ -5,20 +5,22 @@ This module implements the Read Path of the HMLR system.
 1. LatticeRetrieval: Hybrid search to find candidates (wraps LatticeCrawler).
 2. TheGovernor: LLM-based gating to filter candidates.
 
-Phase 11.9.A (Dec 3, 2025): Parallel task architecture + Bridge Block routing
+
 """
 
 import json
 import logging
 import re
+import os
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
-from hmlr.core.telemetry import get_tracer
+# from hmlr.core.telemetry import get_tracer  # Removed - telemetry module deleted
 
 from hmlr.memory.storage import Storage
 from hmlr.core.external_api_client import ExternalAPIClient
+from hmlr.core.model_config import model_config
 from hmlr.memory.retrieval.crawler import LatticeCrawler
 from hmlr.memory.models import Intent, QueryType
 
@@ -38,79 +40,68 @@ class LatticeRetrieval:
     Wraps the existing LatticeCrawler but formats for the Governor.
     """
     def __init__(self, crawler: LatticeCrawler):
-        self.tracer = get_tracer(__name__)
+        # self.tracer = get_tracer(__name__)  # Removed - telemetry deleted
         self.crawler = crawler
 
     def retrieve_candidates(self, query: str, intent: Intent, top_k: int = 20) -> List[MemoryCandidate]:
         """
         Get raw candidates from the memory lattice.
         """
-        with self.tracer.start_as_current_span("lattice_retrieval.retrieve_candidates") as span:
-            span.set_attribute("retrieval.query", query)
-            span.set_attribute("retrieval.top_k", top_k)
+        # Tracer span removed - telemetry deleted
 
-            # Use the existing crawler to get contexts
-            # We ask for more results than usual because the Governor will filter them down
-            retrieved_context = self.crawler.retrieve_context(
-                intent=intent,
-                current_day_id="CURRENT", # Crawler handles this
-                max_results=top_k,
-                window=None # We don't want to filter by window here, we want raw candidates
-            )
+        # Use the existing crawler to get contexts
+        # We ask for more results than usual because the Governor will filter them down
+        retrieved_context = self.crawler.retrieve_context(
+            intent=intent,
+            current_day_id="CURRENT", # Crawler handles this
+            max_results=top_k,
+            window=None # We don't want to filter by window here, we want raw candidates
+        )
 
-            candidates = []
-            
-            # Visualization data
-            vis_query_vector = None
-            vis_candidates = []
+        candidates = []
+        
+        # Visualization data
+        vis_query_vector = None
+        vis_candidates = []
 
-            for ctx in retrieved_context.contexts:
-                # Crawler returns dicts usually
-                mem_id = ctx.get('turn_id') or ctx.get('summary_id') or "unknown"
-                text = ctx.get('user_message', '') + " | " + ctx.get('assistant_response', '')
-                if not text.strip():
-                    text = ctx.get('content', str(ctx))
-                
-                # Capture vectors for Phoenix
-                if 'vector' in ctx and ctx['vector'] is not None:
-                    vec = ctx['vector']
-                    if hasattr(vec, 'tolist'): vec = vec.tolist()
-                    vis_candidates.append((vec, text))
-                
-                if vis_query_vector is None and 'query_vector' in ctx and ctx['query_vector'] is not None:
-                    q_vec = ctx['query_vector']
-                    if hasattr(q_vec, 'tolist'): q_vec = q_vec.tolist()
-                    vis_query_vector = q_vec
+        for ctx in retrieved_context.contexts:
+            # Crawler returns dicts usually
+            mem_id = ctx.get('turn_id') or ctx.get('summary_id') or "unknown"
+            text = ctx.get('user_message', '') + " | " + ctx.get('assistant_response', '')
+            if not text.strip():
+                text = ctx.get('content', str(ctx))
+            
+            # Capture vectors for Phoenix
+            if 'vector' in ctx and ctx['vector'] is not None:
+                vec = ctx['vector']
+                if hasattr(vec, 'tolist'): vec = vec.tolist()
+                vis_candidates.append((vec, text))
+            
+            if vis_query_vector is None and 'query_vector' in ctx and ctx['query_vector'] is not None:
+                q_vec = ctx['query_vector']
+                if hasattr(q_vec, 'tolist'): q_vec = q_vec.tolist()
+                vis_query_vector = q_vec
 
-                # Truncate preview
-                preview = text[:300] + "..." if len(text) > 300 else text
-                
-                candidates.append(MemoryCandidate(
-                    memory_id=mem_id,
-                    content_preview=preview,
-                    score=ctx.get('similarity', 0.0),
-                    source_type='turn', # Assuming mostly turns for now
-                    full_object=ctx
-                ))
+            # Truncate preview
+            preview = text[:300] + "..." if len(text) > 300 else text
             
-            # Log embeddings to Phoenix
-            if vis_query_vector:
-                with self.tracer.start_as_current_span("visualize_query_embedding") as q_span:
-                    q_span.set_attribute("embedding.vector", vis_query_vector)
-                    q_span.set_attribute("embedding.text", query)
-            
-            for i, (vec, txt) in enumerate(vis_candidates):
-                with self.tracer.start_as_current_span(f"visualize_candidate_embedding_{i}") as c_span:
-                    c_span.set_attribute("embedding.vector", vec)
-                    c_span.set_attribute("embedding.text", txt[:1000])
-            
-            span.set_attribute("retrieval.candidates_count", len(candidates))
-            return candidates
+            candidates.append(MemoryCandidate(
+                memory_id=mem_id,
+                content_preview=preview,
+                score=ctx.get('similarity', 0.0),
+                source_type='turn', # Assuming mostly turns for now
+                full_object=ctx
+            ))
+        
+        # Log embeddings to Phoenix
+        if vis_query_vector:
+            # Tracer span removed - telemetry deleted
+            pass
+
+        return candidates
 
 class TheGovernor:
-    """
-    The Gatekeeper - Phase 11.9.A Architecture (Dec 3, 2025)
-    
+    """  
     Implements 3 parallel tasks + Bridge Block routing:
     - TASK 1: Bridge Block routing (LLM)
     - TASK 2: Memory retrieval + 2-key filtering (Vector + LLM)
@@ -123,22 +114,34 @@ class TheGovernor:
         api_client: ExternalAPIClient, 
         storage: Storage,
         crawler: LatticeCrawler,
-        profile_path: str = "config/user_profile_lite.json",
-        dossier_retriever = None  # Phase 4: Dossier retrieval
+        profile_path: str = None,
+        dossier_retriever = None  
     ):
-        self.tracer = get_tracer(__name__)
         self.api_client = api_client
         self.storage = storage
         self.crawler = crawler
         self.dossier_retriever = dossier_retriever
+        
+        # Default to package-relative path
+        if profile_path is None:
+            from pathlib import Path
+            profile_path = str(Path(__file__).parent.parent.parent / "config" / "user_profile_lite.json")
+        
         self.profile = self._load_profile(profile_path)
 
     def _load_profile(self, path: str) -> Dict[str, str]:
+        if not os.path.exists(path):
+            logger.info(f"User profile not found at {path}, starting with empty profile.")
+            return {}
+            
         try:
             with open(path, 'r') as f:
                 return json.load(f)
+        except json.JSONDecodeError as e:
+            logger.error(f"Malfored user profile JSON at {path}: {e}")
+            return {}
         except Exception as e:
-            logger.warning(f"Could not load user profile: {e}")
+            logger.error(f"Unexpected error loading user profile from {path}: {e}", exc_info=True)
             return {}
 
     async def govern(
@@ -148,13 +151,13 @@ class TheGovernor:
         candidates: Optional[List[MemoryCandidate]] = None
     ) -> Tuple[Dict[str, Any], List[MemoryCandidate], List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Phase 11.9.A + Phase 4: Governor Routing with 4 Parallel Tasks
+
         
         Executes 4 independent async tasks:
         1. Bridge Block routing (LLM)
         2. Memory retrieval + 2-key filtering (Vector + LLM)
         3. Fact store lookup (SQLite)
-        4. Dossier retrieval (fact-level embeddings) [Phase 4]
+        4. Dossier retrieval (fact-level embeddings)
         
         Args:
             query: User query text
@@ -166,71 +169,194 @@ class TheGovernor:
             - routing_decision: {matched_block_id, is_new_topic, reasoning, topic_label}
             - filtered_memories: List of MemoryCandidate objects (2-key filtered)
             - facts: List of fact dictionaries from fact_store
-            - dossiers: List of dossier dictionaries (Phase 4)
+            - dossiers: List of dossier dictionaries
         """
-        with self.tracer.start_as_current_span("the_governor.govern") as span:
-            span.set_attribute("governor.query", query)
-            span.set_attribute("governor.day_id", day_id)
+        # Tracer span removed - telemetry deleted
 
-            # ===================================================================
-            # PARALLEL EXECUTION: 4 Independent Tasks (Phase 4: added dossiers)
-            # ===================================================================
-            # Note: _lookup_facts is synchronous, so we wrap it in run_in_executor
-            loop = asyncio.get_event_loop()
-            
-            # Execute dossier retrieval if dossier_retriever is available
-            if self.dossier_retriever:
-                routing_decision, filtered_memories, facts, dossiers = await asyncio.gather(
-                    self._route_to_bridge_block(query, day_id),
-                    self._retrieve_and_filter_memories(query, day_id, candidates),
-                    loop.run_in_executor(None, self._lookup_facts, query),
-                    loop.run_in_executor(None, self._retrieve_dossiers, query),
-                    return_exceptions=True  # Don't fail entire govern if one task fails
-                )
-            else:
-                # Fallback for systems without dossier_retriever
-                routing_decision, filtered_memories, facts = await asyncio.gather(
-                    self._route_to_bridge_block(query, day_id),
-                    self._retrieve_and_filter_memories(query, day_id, candidates),
-                    loop.run_in_executor(None, self._lookup_facts, query),
-                    return_exceptions=True
-                )
-                dossiers = []
-            
-            # Handle exceptions from parallel tasks
-            if isinstance(routing_decision, Exception):
-                logger.error(f"Bridge routing failed: {routing_decision}")
-                routing_decision = {"matched_block_id": None, "is_new_topic": True, "reasoning": "routing_failed"}
-            
-            if isinstance(filtered_memories, Exception):
-                logger.error(f"Memory retrieval failed: {filtered_memories}")
-                filtered_memories = []
-            
-            if isinstance(facts, Exception):
-                logger.error(f"Fact lookup failed: {facts}")
-                facts = []
-            
-            if isinstance(dossiers, Exception):
-                logger.error(f"Dossier retrieval failed: {dossiers}")
-                dossiers = []
-            
-            # Log results
-            span.set_attribute("governor.routing_matched_block", routing_decision.get("matched_block_id"))
-            span.set_attribute("governor.routing_is_new_topic", routing_decision.get("is_new_topic"))
-            span.set_attribute("governor.memories_count", len(filtered_memories))
-            span.set_attribute("governor.facts_count", len(facts))
-            span.set_attribute("governor.dossiers_count", len(dossiers))
-            
-            logger.info(
-                f"Governor results: "
-                f"Matched={routing_decision.get('matched_block_id')}, "
-                f"NewTopic={routing_decision.get('is_new_topic')}, "
-                f"Memories={len(filtered_memories)}, "
-                f"Facts={len(facts)}, "
-                f"Dossiers={len(dossiers)}"
+        # ===================================================================
+        # PARALLEL EXECUTION: 4 Independent Tasks 
+        # ===================================================================
+        # Note: _lookup_facts is synchronous, so we wrap it in run_in_executor
+        loop = asyncio.get_event_loop()
+        
+        # Execute dossier retrieval if dossier_retriever is available
+        if self.dossier_retriever:
+            results = await asyncio.gather(
+                self._route_to_bridge_block(query, day_id),
+                self._retrieve_and_filter_memories(query, day_id, candidates),
+                loop.run_in_executor(None, self._lookup_facts, query),
+                loop.run_in_executor(None, self._retrieve_dossiers, query),
+                return_exceptions=True
             )
+            routing_decision, filtered_memories, facts, dossiers = results
+        else:
+            # Fallback for systems without dossier_retriever
+            results = await asyncio.gather(
+                self._route_to_bridge_block(query, day_id),
+                self._retrieve_and_filter_memories(query, day_id, candidates),
+                loop.run_in_executor(None, self._lookup_facts, query),
+                return_exceptions=True
+            )
+            routing_decision, filtered_memories, facts = results
+            dossiers = []
+        
+        # Handle exceptions from parallel tasks
+        fail_count = 0
+        if isinstance(routing_decision, Exception):
+            logger.error(f"CRITICAL: Bridge routing failed: {routing_decision}", exc_info=True)
+            routing_decision = {"matched_block_id": None, "is_new_topic": True, "reasoning": f"ERROR: routing_failed ({type(routing_decision).__name__})"}
+            fail_count += 1
+        
+        if isinstance(filtered_memories, Exception):
+            logger.error(f"CRITICAL: Memory retrieval failed: {filtered_memories}", exc_info=True)
+            filtered_memories = []
+            fail_count += 1
+        
+        if isinstance(facts, Exception):
+            logger.error(f"CRITICAL: Fact lookup failed: {facts}", exc_info=True)
+            facts = []
+            fail_count += 1
+        
+        if isinstance(dossiers, Exception):
+            logger.error(f"CRITICAL: Dossier retrieval failed: {dossiers}", exc_info=True)
+            dossiers = []
+            fail_count += 1
             
-            return routing_decision, filtered_memories, facts, dossiers
+        if fail_count > 0:
+            logger.warning(f"Governor: {fail_count} parallel tasks failed. Results will be degraded.")
+        
+        # ===================================================================
+        #  1-HOP CAUSAL HYDRATION
+        # ===================================================================
+        routing_decision, filtered_memories, facts, dossiers = await self._causal_hydration(
+            routing_decision, filtered_memories, facts, dossiers
+        )
+        
+        # Log results
+        logger.info(
+            f"Governor results (hydrated): "
+            f"Matched={routing_decision.get('matched_block_id')}, "
+            f"NewTopic={routing_decision.get('is_new_topic')}, "
+            f"Memories={len(filtered_memories)}, "
+            f"Facts={len(facts)}, "
+            f"Dossiers={len(dossiers)}"
+        )
+        
+        return routing_decision, filtered_memories, facts, dossiers
+
+    async def _causal_hydration(
+        self, 
+        routing_decision: Dict[str, Any], 
+        memories: List[MemoryCandidate], 
+        facts: List[Dict[str, Any]], 
+        dossiers: List[Dict[str, Any]]
+    ) -> Tuple[Dict[str, Any], List[MemoryCandidate], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Implements 1-hop causal linkage between facts and turns.
+        Bidirectional: FACTS ↔ TURNS
+        - If fact is chosen → load its source turn
+        - If turn is chosen → load its extracted facts
+        Strictly 1-hop: No recursive expansion.
+        """
+        logger.info("Governor: Performing 1-hop causal hydration")
+        
+        # Track what we already have to avoid duplicates
+        seen_turn_ids = set()
+        for m in memories:
+            if m.source_type == 'turn':
+                seen_turn_ids.add(m.memory_id)
+            elif m.source_type == 'summary' and m.full_object:
+                if hasattr(m.full_object, 'source_turn_id'):
+                    seen_turn_ids.add(m.full_object.source_turn_id)
+                elif isinstance(m.full_object, dict) and 'source_turn_id' in m.full_object:
+                    seen_turn_ids.add(m.full_object['source_turn_id'])
+
+        seen_fact_ids = {f.get('fact_id') for f in facts if f.get('fact_id')}
+        
+        new_memories = list(memories)
+        new_facts = list(facts)
+        
+        hydrated_turn_count = 0
+        hydrated_fact_count = 0
+        
+        # 1. DOSSIER → TURNS (Dossier facts bring in their originating turns)
+        for dossier in dossiers:
+            dossier_id = dossier.get('dossier_id')
+            d_facts = self.storage.get_dossier_facts(dossier_id)
+            for df in d_facts:
+                turn_id = df.get('source_turn_id')
+                if turn_id and turn_id not in seen_turn_ids:
+                    turn_data = self.storage.get_turn_by_id(turn_id)
+                    if turn_data:
+                        # Handle both dict and object formats
+                        if isinstance(turn_data, dict):
+                            user_msg = turn_data.get('user_message', '')
+                        else:
+                            user_msg = getattr(turn_data, 'user_message', '')
+                        
+                        preview = f"[Hydrated from dossier] {user_msg[:100]}" if user_msg else "[Hydrated turn]"
+                        
+                        logger.debug(f"Hydrating turn {turn_id} from dossier {dossier_id}")
+                        new_memories.append(MemoryCandidate(
+                            memory_id=turn_id,
+                            content_preview=preview,
+                            score=model_config.DEFAULT_CANDIDATE_SCORE,
+                            source_type='turn',
+                            full_object=turn_data
+                        ))
+                        seen_turn_ids.add(turn_id)
+                        hydrated_turn_count += 1
+
+        # 2. FACTS → TURNS (Direct fact hits bring in their originating turns)
+        for fact in facts:
+            turn_id = fact.get('source_turn_id')
+            if turn_id and turn_id not in seen_turn_ids:
+                turn_data = self.storage.get_turn_by_id(turn_id)
+                if turn_data:
+                    # Handle both dict and object formats
+                    if isinstance(turn_data, dict):
+                        user_msg = turn_data.get('user_message', '')
+                    else:
+                        user_msg = getattr(turn_data, 'user_message', '')
+                    
+                    preview = f"[Hydrated from fact] {user_msg[:100]}" if user_msg else "[Hydrated turn]"
+                    
+                    logger.debug(f"Hydrating turn {turn_id} from fact {fact.get('fact_id')}")
+                    new_memories.append(MemoryCandidate(
+                        memory_id=turn_id,
+                        content_preview=preview,
+                        score=model_config.DEFAULT_CANDIDATE_SCORE,
+                        source_type='turn',
+                        full_object=turn_data
+                    ))
+                    seen_turn_ids.add(turn_id)
+                    hydrated_turn_count += 1
+
+        # 3. TURNS → FACTS (Memory hits bring in their extracted facts)
+        for m in memories:
+            turn_id = None
+            if m.source_type == 'turn':
+                turn_id = m.memory_id
+            elif m.source_type == 'summary' and m.full_object:
+                if hasattr(m.full_object, 'source_turn_id'):
+                    turn_id = m.full_object.source_turn_id
+                elif isinstance(m.full_object, dict) and 'source_turn_id' in m.full_object:
+                    turn_id = m.full_object['source_turn_id']
+            
+            if turn_id:
+                t_facts = self.storage.get_facts_by_turn_id(turn_id)
+                for tf in t_facts:
+                    fid = tf.get('fact_id')
+                    if fid and fid not in seen_fact_ids:
+                        logger.debug(f"Hydrating fact {fid} from turn {turn_id}")
+                        new_facts.append(tf)
+                        seen_fact_ids.add(fid)
+                        hydrated_fact_count += 1
+        
+        if hydrated_turn_count > 0 or hydrated_fact_count > 0:
+            logger.info(f"Causal hydration: +{hydrated_turn_count} turns, +{hydrated_fact_count} facts")
+
+        return routing_decision, new_memories, new_facts, dossiers
     
     async def _route_to_bridge_block(self, query: str, day_id: str) -> Dict[str, Any]:
         """
@@ -250,59 +376,57 @@ class TheGovernor:
                 "topic_label": str (suggested label if new topic)
             }
         """
-        with self.tracer.start_as_current_span("governor.route_to_bridge_block") as span:
-            span.set_attribute("routing.query", query)
-            span.set_attribute("routing.day_id", day_id)
+        # Tracer span removed - telemetry deleted
+        
+        # Get metadata for all active bridge blocks (excludes turns[])
+        metadata_list = self.storage.get_daily_ledger_metadata(day_id)
+        
+        if not metadata_list:
+            # No blocks exist today - this is the first query
+            logger.info("Governor: No blocks exist, creating first topic")
+            return {
+                "matched_block_id": None,
+                "is_new_topic": True,
+                "reasoning": "first_query_of_day",
+                "topic_label": "Initial Conversation"
+            }
             
-            # Get metadata for all active bridge blocks (excludes turns[])
-            metadata_list = self.storage.get_daily_ledger_metadata(day_id)
+        # Build routing prompt with metadata AND FACTS
+        blocks_text = ""
+        for i, meta in enumerate(metadata_list):
+            last_active_marker = " (LAST ACTIVE)" if meta.get('is_last_active') else ""
+            status_marker = f" ({meta.get('status', 'UNKNOWN')})"
             
-            if not metadata_list:
-                # No blocks exist today - this is the first query
-                logger.info("Governor: No blocks exist, creating first topic")
-                return {
-                    "matched_block_id": None,
-                    "is_new_topic": True,
-                    "reasoning": "first_query_of_day",
-                    "topic_label": "Initial Conversation"
-                }
+            blocks_text += f"{i+1}. [{meta.get('topic_label', 'Unknown')}]{last_active_marker}{status_marker}\n"
+            blocks_text += f"   ID: {meta.get('block_id')}\n"
+            blocks_text += f"   Summary: {meta.get('summary', 'No summary')[:150]}...\n"
+            blocks_text += f"   Keywords: {', '.join(meta.get('keywords', [])[:5])}\n"
             
-            # Build routing prompt with metadata AND FACTS
-            blocks_text = ""
-            for i, meta in enumerate(metadata_list):
-                last_active_marker = " (LAST ACTIVE)" if meta.get('is_last_active') else ""
-                status_marker = f" ({meta.get('status', 'UNKNOWN')})"
-                
-                blocks_text += f"{i+1}. [{meta.get('topic_label', 'Unknown')}]{last_active_marker}{status_marker}\n"
-                blocks_text += f"   ID: {meta.get('block_id')}\n"
-                blocks_text += f"   Summary: {meta.get('summary', 'No summary')[:150]}...\n"
-                blocks_text += f"   Keywords: {', '.join(meta.get('keywords', [])[:5])}\n"
-                
-                if meta.get('open_loops'):
-                    blocks_text += f"   Open Loops: {', '.join(meta['open_loops'][:3])}\n"
-                
-                if meta.get('decisions_made'):
-                    blocks_text += f"   Decisions: {', '.join(meta['decisions_made'][:3])}\n"
-                
-                blocks_text += f"   Turn Count: {meta.get('turn_count', 0)}\n"
-                blocks_text += f"   Last Updated: {meta.get('last_updated', 'Unknown')}\n"
-                
-                # CRITICAL: Add all facts extracted for this topic
-                block_facts = self.storage.get_facts_for_block(meta.get('block_id'))
-                if block_facts:
-                    blocks_text += f"   Facts Extracted ({len(block_facts)} total):\n"
-                    # Show up to 10 most recent facts
-                    for fact in block_facts[:10]:
-                        fact_preview = fact.get('value', '')[:80]
-                        if len(fact.get('value', '')) > 80:
-                            fact_preview += '...'
-                        blocks_text += f"      • {fact.get('key', 'unknown')}: {fact_preview}\n"
-                    if len(block_facts) > 10:
-                        blocks_text += f"      ... and {len(block_facts) - 10} more facts\n"
-                
-                blocks_text += "\n"
+            if meta.get('open_loops'):
+                blocks_text += f"   Open Loops: {', '.join(meta['open_loops'][:3])}\n"
             
-            routing_prompt = f"""You are an intelligent topic routing assistant for a conversational memory system.
+            if meta.get('decisions_made'):
+                blocks_text += f"   Decisions: {', '.join(meta['decisions_made'][:3])}\n"
+            
+            blocks_text += f"   Turn Count: {meta.get('turn_count', 0)}\n"
+            blocks_text += f"   Last Updated: {meta.get('last_updated', 'Unknown')}\n"
+            
+            # CRITICAL: Add all facts extracted for this topic
+            block_facts = self.storage.get_facts_for_block(meta.get('block_id'))
+            if block_facts:
+                blocks_text += f"   Facts Extracted ({len(block_facts)} total):\n"
+                # Show up to 10 most recent facts
+                for fact in block_facts[:10]:
+                    fact_preview = fact.get('value', '')[:80]
+                    if len(fact.get('value', '')) > 80:
+                        fact_preview += '...'
+                    blocks_text += f"      • {fact.get('key', 'unknown')}: {fact_preview}\n"
+                if len(block_facts) > 10:
+                    blocks_text += f"      ... and {len(block_facts) - 10} more facts\n"
+            
+            blocks_text += "\n"
+        
+        routing_prompt = f"""You are an intelligent topic routing assistant for a conversational memory system.
 
 PREVIOUS TOPICS TODAY:
 {blocks_text}
@@ -372,71 +496,67 @@ Return JSON:
     "is_new_topic": true/false,
     "reasoning": "<DETAILED explanation answering the 5 debug questions above>",
     "topic_label": "<suggested label if new topic, otherwise empty>"
-}}
+        }}
 """
-            try:
-                # Use fast, cheap model for routing
-                # Note: Wrapping sync call until async API client is available
-                response = self.api_client.query_external_api(
-                    routing_prompt, 
-                    model="gpt-4.1-mini"
-                )
+        try:
+            # Use fast, cheap model for routing
+            response = await self.api_client.query_external_api_async(
+                routing_prompt, 
+                model=model_config.get_lattice_model()
+            )
+            
+            # Parse JSON response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                decision = json.loads(json_match.group(0))
                 
-                # Parse JSON response
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                if json_match:
-                    decision = json.loads(json_match.group(0))
+                # Validate structure
+                if "matched_block_id" in decision and "is_new_topic" in decision:
+                    # Log routing decision at debug level
+                    logger.debug(
+                        f"Routing decision: matched={decision.get('matched_block_id')}, "
+                        f"new_topic={decision.get('is_new_topic')}, "
+                        f"label={decision.get('topic_label', 'N/A')}"
+                    )
+                    logger.debug(f"Routing reasoning: {decision.get('reasoning', 'N/A')}")
                     
-                    # Validate structure
-                    if "matched_block_id" in decision and "is_new_topic" in decision:
-                        # DEBUG: Print detailed reasoning to console
-                        print(f"\n🧠 GOVERNOR ROUTING DECISION DEBUG:")
-                        print(f"   Query: '{query}'")
-                        print(f"   Matched Block: {decision.get('matched_block_id')}")
-                        print(f"   Is New Topic: {decision.get('is_new_topic')}")
-                        print(f"   REASONING:")
-                        reasoning = decision.get('reasoning', 'No reasoning provided')
-                        for line in reasoning.split('\n'):
-                            print(f"      {line}")
-                        print(f"   Suggested Label: {decision.get('topic_label', 'N/A')}")
-                        
-                        logger.info(
-                            f"Routing decision: "
-                            f"matched={decision.get('matched_block_id')}, "
-                            f"new={decision.get('is_new_topic')}, "
-                            f"reason={decision.get('reasoning')}"
-                        )
-                        return decision
-                
-                # Fallback: Default to last active block
-                logger.warning("Failed to parse routing JSON, defaulting to last active")
+                    logger.info(
+                        f"Routing decision: "
+                        f"matched={decision.get('matched_block_id')}, "
+                        f"new={decision.get('is_new_topic')}, "
+                        f"reason={decision.get('reasoning')}"
+                    )
+                    return decision
+            
+            # Fallback: Default to last active block
+            logger.warning("Failed to parse routing JSON, defaulting to last active")
+            last_active = next((m for m in metadata_list if m.get('is_last_active')), metadata_list[0])
+            return {
+                "matched_block_id": last_active.get('block_id'),
+                "is_new_topic": False,
+                "reasoning": "routing_parse_failed_defaulted_to_last_active",
+                "topic_label": ""
+            }
+            
+        except Exception as e:
+            logger.error(f"Bridge routing failed: {e}", exc_info=True)
+            logger.warning("FALLBACK: Defaulting to last active block due to routing failure")
+            # Fail safe: default to last active or create new
+            if metadata_list:
                 last_active = next((m for m in metadata_list if m.get('is_last_active')), metadata_list[0])
                 return {
                     "matched_block_id": last_active.get('block_id'),
                     "is_new_topic": False,
-                    "reasoning": "routing_parse_failed_defaulted_to_last_active",
+                    "reasoning": "routing_exception_defaulted_to_last_active",
                     "topic_label": ""
                 }
-                
-            except Exception as e:
-                logger.error(f"Bridge routing failed: {e}")
-                span.record_exception(e)
-                # Fail safe: default to last active or create new
-                if metadata_list:
-                    last_active = next((m for m in metadata_list if m.get('is_last_active')), metadata_list[0])
-                    return {
-                        "matched_block_id": last_active.get('block_id'),
-                        "is_new_topic": False,
-                        "reasoning": "routing_exception_defaulted_to_last_active",
-                        "topic_label": ""
-                    }
-                else:
-                    return {
-                        "matched_block_id": None,
-                        "is_new_topic": True,
-                        "reasoning": "routing_exception_no_blocks_exist",
-                        "topic_label": "Error Recovery Topic"
-                    }
+            else:
+                return {
+                    "matched_block_id": None,
+                    "is_new_topic": True,
+                    "reasoning": "routing_exception_no_blocks_exist",
+                    "topic_label": "Error Recovery Topic"
+                }
     
     async def _retrieve_and_filter_memories(
         self,
@@ -458,140 +578,120 @@ Return JSON:
         Returns:
             List of MemoryCandidate objects (filtered by LLM)
         """
-        with self.tracer.start_as_current_span("governor.retrieve_and_filter_memories") as span:
-            span.set_attribute("memory_filter.query", query)
+        # Tracer span removed - telemetry deleted
+        
+        # If no candidates provided, perform vector search via crawler
+        if not candidates:
+            logger.info(f"Governor: Performing vector search for query: '{query[:100]}...'")
             
-            # If no candidates provided, perform vector search via crawler
-            if not candidates:
-                print(f"\n🔍 Governor: No candidates provided, performing vector search...")
-                print(f"   Query: '{query}'")
+            # Use crawler to perform vector search
+            try:
+                from hmlr.memory.models import Intent, QueryType
                 
-                # Use crawler to perform vector search
-                try:
-                    from hmlr.memory.models import Intent, QueryType
+                # Create intent for crawler (Intent is a dataclass)
+                # Pass query as keywords for vector search
+                intent = Intent(
+                    keywords=query.lower().split(),  # Use query words as keywords
+                    query_type=QueryType.CHAT,
+                    raw_query=query
+                )
+                
+                # Retrieve contexts from crawler (this searches all embeddings)
+                retrieved_context = self.crawler.retrieve_context(
+                    intent=intent,
+                    current_day_id=day_id,
+                    max_results=20,  # Get top 20 candidates for filtering
+                    window=None  # Search all time periods
+                )
+                
+                logger.debug(f"Crawler found {len(retrieved_context.contexts)} candidates")
+                
+                # Convert crawler results to MemoryCandidate objects
+                candidates = []
+                for ctx in retrieved_context.contexts:
+                    # Extract memory ID
+                    mem_id = ctx.get('turn_id') or ctx.get('block_id') or ctx.get('summary_id') or 'unknown'
                     
-                    # Create intent for crawler (Intent is a dataclass)
-                    # Pass query as keywords for vector search
-                    intent = Intent(
-                        keywords=query.lower().split(),  # Use query words as keywords
-                        query_type=QueryType.CHAT,
-                        raw_query=query
-                    )
+                    # Build content preview
+                    user_msg = ctx.get('user_message', '')
+                    ai_resp = ctx.get('assistant_response', '')
+                    content = ctx.get('content', '')
                     
-                    # Retrieve contexts from crawler (this searches all embeddings)
-                    retrieved_context = self.crawler.retrieve_context(
-                        intent=intent,
-                        current_day_id=day_id,
-                        max_results=20,  # Get top 20 candidates for filtering
-                        window=None  # Search all time periods
-                    )
-                    
-                    print(f"   🔍 Crawler found {len(retrieved_context.contexts)} candidates")
-                    
-                    # Convert crawler results to MemoryCandidate objects
-                    candidates = []
-                    for ctx in retrieved_context.contexts:
-                        # Extract memory ID
-                        mem_id = ctx.get('turn_id') or ctx.get('block_id') or ctx.get('summary_id') or 'unknown'
-                        
-                        # Build content preview
-                        user_msg = ctx.get('user_message', '')
-                        ai_resp = ctx.get('assistant_response', '')
-                        content = ctx.get('content', '')
-                        
-                        if user_msg or ai_resp:
-                            preview = f"User: {user_msg}\nAI: {ai_resp}"
-                        elif content:
-                            preview = content
-                        else:
-                            preview = str(ctx)
-                        
-                        # Truncate preview
-                        preview = preview[:500] + "..." if len(preview) > 500 else preview
-                        
-                        # Create MemoryCandidate
-                        candidates.append(MemoryCandidate(
-                            memory_id=mem_id,
-                            content_preview=preview,
-                            score=ctx.get('similarity', 0.0),
-                            source_type=ctx.get('source_type', 'turn'),
-                            full_object=ctx
-                        ))
-                    
-                    if candidates:
-                        print(f"   ✅ Converted to {len(candidates)} MemoryCandidate objects")
-                        for i, cand in enumerate(candidates[:3], 1):
-                            print(f"      [{i}] ID: {cand.memory_id}, Score: {cand.score:.3f}")
-                            print(f"          Preview: {cand.content_preview[:80]}...")
+                    if user_msg or ai_resp:
+                        preview = f"User: {user_msg}\nAI: {ai_resp}"
+                    elif content:
+                        preview = content
                     else:
-                        print(f"   ⚠️  No candidates found in vector search")
-                        return []
+                        preview = str(ctx)
                     
-                except Exception as e:
-                    logger.error(f"Vector search failed: {e}")
-                    print(f"   ❌ Vector search error: {e}")
+                    # Truncate preview
+                    preview = preview[:500] + "..." if len(preview) > 500 else preview
+                    
+                    # Create MemoryCandidate
+                    candidates.append(MemoryCandidate(
+                        memory_id=mem_id,
+                        content_preview=preview,
+                        score=ctx.get('similarity', 0.0),
+                        source_type=ctx.get('source_type', 'turn'),
+                        full_object=ctx
+                    ))
+                    
+                if candidates:
+                    logger.debug(f"Converted to {len(candidates)} MemoryCandidate objects")
+                    for i, cand in enumerate(candidates[:3], 1):
+                        logger.debug(f"  [{i}] {cand.memory_id}: score={cand.score:.3f}")
+                else:
+                    logger.info("No candidates found in vector search")
                     return []
-            
-            if not candidates:
+                
+            except Exception as e:
+                logger.error(f"Vector search failed: {e}", exc_info=True)
+                # We raise a custom error here instead of returning empty list if it's critical,
+                # but for resilience we often want to fallback.
+                # However, this is a "Silent Failure" pattern if not carefully handled.
+                # Let's log it as a critical system error but allow fallback to prevent crash.
                 return []
+        
+        if not candidates:
+            return []
+        
+        # Fetch original queries for 2-key filtering
+        enriched_candidates = []
+        for cand in candidates:
+            # Extract original query from full_object
+            original_query = cand.full_object.get('original_query', '')
             
-            # Fetch original queries for 2-key filtering
-            enriched_candidates = []
-            for cand in candidates:
-                # Extract original query from full_object
-                original_query = cand.full_object.get('original_query', '')
-                
-                # If original query >1k tokens, fetch gardener summary instead
-                # (Placeholder logic - implement token counting later)
-                if len(original_query) > 4000:  # Rough heuristic: 1 token ≈ 4 chars
-                    # TODO: Fetch gardener summary from storage
-                    original_query = original_query[:1000] + "... [truncated]"
-                
-                enriched_candidates.append({
-                    "index": len(enriched_candidates),
-                    "memory_id": cand.memory_id,
-                    "similarity": cand.score,
-                    "original_query": original_query,
-                    "content": cand.content_preview,
-                    "metadata": {
-                        "source_type": cand.source_type,
-                        "timestamp": cand.full_object.get('timestamp', 'unknown')
-                    }
-                })
+            # If original query >1k tokens, fetch gardener summary instead
+            # (Placeholder logic - implement token counting later)
+            if len(original_query) > 4000:  # Rough heuristic: 1 token ≈ 4 chars
+                # TODO: Fetch gardener summary from storage
+                original_query = original_query[:1000] + "... [truncated]"
             
-            # Build 2-key filtering prompt
-            candidates_text = ""
-            for ec in enriched_candidates:
-                candidates_text += f"[{ec['index']}] Similarity: {ec['similarity']:.2f}\n"
-                candidates_text += f"   Original Query: \"{ec['original_query'][:200]}...\"\n"
-                candidates_text += f"   Content: {ec['content'][:300]}...\n"
-                candidates_text += f"   Metadata: {json.dumps(ec['metadata'])}\n\n"
+            enriched_candidates.append({
+                "index": len(enriched_candidates),
+                "memory_id": cand.memory_id,
+                "similarity": cand.score,
+                "original_query": original_query,
+                "content": cand.content_preview,
+                "metadata": {
+                    "source_type": cand.source_type,
+                    "timestamp": cand.full_object.get('timestamp', 'unknown')
+                }
+            })
             
-            # === DEBUG: Log memory candidates sent to governor === #
-            debug_file_path = "debug_llm_flow.txt"
-            with open(debug_file_path, 'a', encoding='utf-8') as f:
-                f.write(f"=" * 80 + "\n")
-                f.write(f"MEMORY CANDIDATES SENT TO GOVERNOR FOR FILTERING\n")
-                f.write(f"=" * 80 + "\n\n")
-                f.write(f"Total Candidates: {len(enriched_candidates)}\n\n")
-                
-                for ec in enriched_candidates:
-                    f.write(f"[{ec['index']}] Memory ID: {ec['memory_id']}\n")
-                    f.write(f"    Similarity Score: {ec['similarity']:.4f}\n")
-                    f.write(f"    Source Type: {ec['metadata'].get('source_type', 'unknown')}\n")
-                    f.write(f"    Timestamp: {ec['metadata'].get('timestamp', 'unknown')}\n")
-                    f.write(f"    Original Query: {ec['original_query'][:200]}")
-                    if len(ec['original_query']) > 200:
-                        f.write("...")
-                    f.write(f"\n")
-                    f.write(f"    Content Preview: {ec['content'][:300]}")
-                    if len(ec['content']) > 300:
-                        f.write("...")
-                    f.write(f"\n\n")
-                
-                f.write(f"\n--- 2-KEY FILTER PROMPT TO LLM ---\n\n")
+        # Build 2-key filtering prompt
+        candidates_text = ""
+        for ec in enriched_candidates:
+            candidates_text += f"[{ec['index']}] Similarity: {ec['similarity']:.2f}\n"
+            candidates_text += f"   Original Query: \"{ec['original_query'][:200]}...\"\n"
+            candidates_text += f"   Content: {ec['content'][:300]}...\n"
+            candidates_text += f"   Metadata: {json.dumps(ec['metadata'])}\n\n"
+        
+        # Debug logging removed - was writing to debug_llm_flow.txt
+        # If debugging needed, use logger.debug() with DEBUG_MODE env variable
+        logger.debug(f"Memory candidates for filtering: {len(enriched_candidates)} total")
             
-            filter_prompt = f"""You are a memory filter using 2-key validation.
+        filter_prompt = f"""You are a memory filter using 2-key validation.
 
 CURRENT QUERY: "{query}"
 
@@ -616,80 +716,56 @@ Return JSON:
     "reasoning": "<brief explanation of why others were filtered out>"
 }}
 """
-            try:
-                # Use GPT-4.1 mini for filtering
-                print(f"\n🧠 Governor: Running 2-key memory filter...")
-                print(f"   Candidates to evaluate: {len(enriched_candidates)}")
+        try:
+            # Use GPT-4.1 mini for filtering
+            logger.info(f"Governor: Running 2-key memory filter on {len(enriched_candidates)} candidates")
+            
+            response = await self.api_client.query_external_api_async(
+                filter_prompt,
+                model=model_config.get_lattice_model()
+            )
+            
+            # Parse JSON
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group(0))
+                relevant_indices = data.get("relevant_indices", [])
+                reasoning = data.get("reasoning", "")
                 
-                response = self.api_client.query_external_api(
-                    filter_prompt,
-                    model="gpt-4.1-mini"
+                # Filter candidates
+                filtered = [candidates[idx] for idx in relevant_indices if 0 <= idx < len(candidates)]
+                
+                # Log filter results
+                logger.info(f"Memory filter: {len(filtered)}/{len(candidates)} selected")
+                logger.debug(f"Selected indices: {relevant_indices}")
+                logger.debug(f"Reasoning: {reasoning}")
+                
+                # Debug logging: Use logger.debug() instead of file writes
+                logger.debug(
+                    f"Memory filter results: {len(filtered)}/{len(candidates)} selected. "
+                    f"Indices: {relevant_indices}"
                 )
                 
-                # Parse JSON
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                if json_match:
-                    data = json.loads(json_match.group(0))
-                    relevant_indices = data.get("relevant_indices", [])
-                    reasoning = data.get("reasoning", "")
-                    
-                    # Filter candidates
-                    filtered = [candidates[idx] for idx in relevant_indices if 0 <= idx < len(candidates)]
-                    
-                    # VERBOSE LOGGING FOR TEST 8
-                    print(f"\n   🎯 MEMORY FILTER RESULTS:")
-                    print(f"      Input: {len(candidates)} candidates")
-                    print(f"      Output: {len(filtered)} selected as relevant")
-                    print(f"      Selected indices: {relevant_indices}")
-                    print(f"\n   💭 GOVERNOR'S REASONING:")
-                    for line in reasoning.split('\n'):
-                        print(f"      {line}")
-                    
-                    # === DEBUG: Log filtering results === #
-                    debug_file_path = "debug_llm_flow.txt"
-                    with open(debug_file_path, 'a', encoding='utf-8') as f:
-                        f.write(f"\n--- GOVERNOR FILTERING RESULTS ---\n\n")
-                        f.write(f"Input: {len(candidates)} candidates\n")
-                        f.write(f"Output: {len(filtered)} selected as relevant\n")
-                        f.write(f"Selected Indices: {relevant_indices}\n\n")
-                        f.write(f"Governor's Reasoning:\n{reasoning}\n\n")
-                        
-                        f.write(f"SELECTED MEMORIES (will be included in context):\n\n")
-                        for idx, mem in enumerate(filtered, 1):
-                            f.write(f"  [{idx}] Memory ID: {mem.memory_id}\n")
-                            f.write(f"      Score: {mem.score:.4f}\n")
-                            f.write(f"      Content: {mem.content_preview[:200]}")
-                            if len(mem.content_preview) > 200:
-                                f.write("...")
-                            f.write(f"\n\n")
-                    
-                    if filtered:
-                        print(f"\n   ✅ APPROVED MEMORIES:")
-                        for i, mem in enumerate(filtered, 1):
-                            print(f"      [{i}] {mem.memory_id} (score: {mem.score:.3f})")
-                            print(f"          {mem.content_preview[:100]}...")
-                    else:
-                        print(f"   ⚠️  No memories approved by Governor")
-                    
-                    logger.info(
-                        f"Memory filter: {len(filtered)}/{len(candidates)} relevant. "
-                        f"Reason: {reasoning[:100]}"
-                    )
-                    span.set_attribute("memory_filter.filtered_count", len(filtered))
-                    span.set_attribute("memory_filter.reasoning", reasoning)
-                    return filtered
+                if filtered:
+                    logger.debug(f"Approved memories: {[m.memory_id for m in filtered]}")
+                else:
+                    logger.info("No memories approved by Governor")
                 
-                # Fallback: Return all candidates if parsing fails
-                print(f"   ⚠️  Failed to parse filter JSON, returning all candidates")
-                logger.warning("Failed to parse memory filter JSON, returning all candidates")
-                return candidates
-                
-            except Exception as e:
-                logger.error(f"Memory filtering failed: {e}")
-                print(f"   ❌ Memory filtering error: {e}")
-                span.record_exception(e)
-                # Fail open: return all candidates
-                return candidates
+                logger.info(
+                    f"Memory filter: {len(filtered)}/{len(candidates)} relevant. "
+                    f"Reason: {reasoning[:100]}"
+                )
+                return filtered
+            
+            # Fallback: Return all candidates if parsing fails
+            logger.warning("Failed to parse memory filter JSON, returning all candidates")
+            return candidates
+            
+        except Exception as e:
+            logger.error(f"Memory filtering failed: {e}", exc_info=True)
+            logger.warning("FALLBACK: Returning all candidates due to LatticeGovernorError")
+            # Fail open: returning candidates is safer than returning nothing
+            return candidates
     
     def _lookup_facts(self, query: str) -> List[Dict[str, Any]]:
         """
@@ -701,23 +777,21 @@ Return JSON:
         Returns:
             List of fact dictionaries from fact_store
         """
-        with self.tracer.start_as_current_span("governor.lookup_facts") as span:
-            span.set_attribute("fact_lookup.query", query)
-            
-            # Extract keywords from query
-            words = re.findall(r'\b[A-Z]{2,}\b|\b\w+\b', query)
-            unique_words = list(set(words))[:5]
-            
-            facts = []
-            for word in unique_words:
-                # Try exact match (only method available)
-                fact = self.storage.query_fact_store(word)
-                if fact and fact not in facts:
-                    facts.append(fact)
-            
-            span.set_attribute("fact_lookup.hits", len(facts))
-            logger.info(f"Fact lookup: Found {len(facts)} matching facts")
-            return facts
+        # Tracer span removed - telemetry deleted
+        
+        # Extract keywords from query
+        words = re.findall(r'\b[A-Z]{2,}\b|\b\w+\b', query)
+        unique_words = list(set(words))[:5]
+        
+        facts = []
+        for word in unique_words:
+            # Try exact match (only method available)
+            fact = self.storage.query_fact_store(word)
+            if fact and fact not in facts:
+                facts.append(fact)
+        
+        logger.info(f"Fact lookup: Found {len(facts)} matching facts")
+        return facts
     
     def _retrieve_dossiers(self, query: str) -> List[Dict[str, Any]]:
         """
@@ -732,23 +806,21 @@ Return JSON:
         if not self.dossier_retriever:
             return []
         
-        with self.tracer.start_as_current_span("governor.retrieve_dossiers") as span:
-            span.set_attribute("dossier_retrieval.query", query)
+        # Tracer span removed - telemetry deleted
             
-            # Retrieve ALL matching dossiers above threshold (no top_k limit)
-            dossiers = self.dossier_retriever.retrieve_relevant_dossiers(
-                query=query,
-                top_k=None,  # No limit - return all matching dossiers
-                threshold=0.4
-            )
-            
-            span.set_attribute("dossier_retrieval.hits", len(dossiers))
-            logger.info(f"Dossier retrieval: Found {len(dossiers)} relevant dossiers")
-            return dossiers
+        # Retrieve ALL matching dossiers above threshold (no top_k limit)
+        dossiers = self.dossier_retriever.retrieve_relevant_dossiers(
+            query=query,
+            top_k=None,  # No limit - return all matching dossiers
+            threshold=model_config.MIN_SIMILARITY_THRESHOLD
+        )
+        
+        logger.info(f"Dossier retrieval: Found {len(dossiers)} relevant dossiers")
+        return dossiers
     
     def _check_fact_store(self, query: str) -> List[Dict[str, Any]]:
         """
-        Check fact_store for exact keyword matches (Phase 11.5).
+        Check fact_store for exact keyword matches
         
         Args:
             query: User query text
@@ -756,26 +828,24 @@ Return JSON:
         Returns:
             List of matching facts (empty if none found)
         """
-        with self.tracer.start_as_current_span("governor.check_fact_store") as span:
-            span.set_attribute("fact_check.query", query)
-            
-            # Extract potential keywords from query (simple word extraction)
-            words = re.findall(r'\b[A-Z]{2,}\b|\b\w+\b', query)
-            unique_words = list(set(words))[:5]  # Check up to 5 keywords
-            
-            results = []
-            for word in unique_words:
-                # Try exact match (only method available)
-                fact = self.storage.query_fact_store(word)
-                if fact and fact not in results:
-                    results.append(fact)
-            
-            span.set_attribute("fact_check.hits", len(results))
-            return results
+        # Tracer span removed - telemetry deleted
+        
+        # Extract potential keywords from query (simple word extraction)
+        words = re.findall(r'\b[A-Z]{2,}\b|\b\w+\b', query)
+        unique_words = list(set(words))[:5]  # Check up to 5 keywords
+        
+        results = []
+        for word in unique_words:
+            # Try exact match (only method available)
+            fact = self.storage.query_fact_store(word)
+            if fact and fact not in results:
+                results.append(fact)
+        
+        return results
     
     def _check_daily_ledger(self, query: str) -> List[Dict[str, Any]]:
         """
-        Check daily_ledger for same-day Bridge Blocks (Phase 11.5).
+        Check daily_ledger for same-day Bridge Blocks
         
         Args:
             query: User query text
@@ -783,23 +853,19 @@ Return JSON:
         Returns:
             List of Bridge Blocks from today (empty if none found)
         """
-        with self.tracer.start_as_current_span("governor.check_daily_ledger") as span:
-            span.set_attribute("ledger_check.query", query)
-            
-            # Get all active blocks (cross-day continuity)
-            today_blocks = self.storage.get_active_bridge_blocks()
-            
-            if not today_blocks:
-                span.set_attribute("ledger_check.hits", 0)
-                return []
-            
-            # Return ALL same-day blocks - let the Governor (LLM) decide relevance
-            # Rationale: Vector similarity can match without lexical overlap
-            # Example: "serverless services" relates to "AWS EC2" discussion
-            # even though no keywords match
-            span.set_attribute("ledger_check.total_today", len(today_blocks))
-            span.set_attribute("ledger_check.hits", len(today_blocks))
-            return today_blocks
+        # Tracer span removed - telemetry deleted
+        
+        # Get all active blocks (cross-day continuity)
+        today_blocks = self.storage.get_active_bridge_blocks()
+        
+        if not today_blocks:
+            return []
+        
+        # Return ALL same-day blocks - let the Governor (LLM) decide relevance
+        # Rationale: Vector similarity can match without lexical overlap
+        # Example: "serverless services" relates to "AWS EC2" discussion
+        # even though no keywords match
+        return today_blocks
     
     def _format_bridge_block(self, content: Dict[str, Any]) -> str:
         """

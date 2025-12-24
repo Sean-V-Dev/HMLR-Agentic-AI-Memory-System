@@ -12,8 +12,7 @@ Examples:
     day_20251006                      # Day node (simple date)
     sess_20251006_140000_xyz789       # Session
 
-Author: CognitiveLattice Team
-Created: 2025-10-10
+
 """
 
 import hashlib

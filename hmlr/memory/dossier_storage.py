@@ -5,8 +5,7 @@ This module provides embedding storage and search specifically for dossier facts
 Each fact is embedded individually to enable granular semantic search, while
 maintaining the association with its parent dossier.
 
-Author: CognitiveLattice Team
-Created: 2025-12-15 (Phase 1: Dossier System)
+
 """
 
 import sqlite3
@@ -71,7 +70,7 @@ class DossierEmbeddingStorage:
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_dfe_dossier ON dossier_fact_embeddings(dossier_id)")
         
-        # Dossier-level search embeddings (NEW - for broad topic matching)
+        # Dossier-level search embeddings
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS dossier_search_embeddings (
                 dossier_id TEXT PRIMARY KEY,
@@ -179,15 +178,6 @@ class DossierEmbeddingStorage:
         Returns:
             List of tuples: (fact_id, dossier_id, similarity_score)
             Ordered by similarity score descending
-        
-        Example:
-            results = storage.search_similar_facts("vegetarian diet", top_k=10)
-            # Returns: [
-            #   ('fact_001', 'dos_diet_001', 0.85),
-            #   ('fact_023', 'dos_diet_001', 0.72),
-            #   ('fact_045', 'dos_health_002', 0.65)
-            # ]
-            # Note: dos_diet_001 appears twice = strong candidate
         """
         try:
             # Embed query
@@ -202,6 +192,13 @@ class DossierEmbeddingStorage:
             for fact_id, dossier_id, embedding_blob in cursor.fetchall():
                 # Deserialize embedding
                 fact_embedding = np.frombuffer(embedding_blob, dtype=np.float32)
+                
+                # Check for dimension mismatch (happens when switching embedding models)
+                if len(fact_embedding) != len(query_embedding):
+                    logger.warning(f"Skipping fact {fact_id}: embedding dimension mismatch "
+                                 f"({len(fact_embedding)} vs {len(query_embedding)}). "
+                                 f"Consider regenerating embeddings with current model.")
+                    continue
                 
                 # Compute cosine similarity
                 similarity = float(np.dot(query_embedding, fact_embedding) / (
@@ -233,10 +230,7 @@ class DossierEmbeddingStorage:
     ) -> List[Tuple[str, float]]:
         """
         Search for dossiers using search_summary embeddings (broad topic matching).
-        
-        This provides STAGE 1 retrieval - get ALL relevant dossiers based on broad
-        topic similarity. Then the LLM can examine facts and make final selection.
-        
+               
         Args:
             query: Query text to search for
             top_k: Maximum number of results to return
@@ -265,6 +259,13 @@ class DossierEmbeddingStorage:
             results = []
             for dossier_id, embedding_blob in rows:
                 dossier_embedding = np.frombuffer(embedding_blob, dtype=np.float32)
+                
+                # Check for dimension mismatch
+                if len(dossier_embedding) != len(query_embedding):
+                    logger.warning(f"Skipping dossier {dossier_id}: embedding dimension mismatch "
+                                 f"({len(dossier_embedding)} vs {len(query_embedding)}). "
+                                 f"Consider regenerating embeddings with current model.")
+                    continue
                 
                 # Cosine similarity
                 similarity = np.dot(query_embedding, dossier_embedding) / (
@@ -361,90 +362,3 @@ class DossierEmbeddingStorage:
             return False
 
 
-# ============================================================================
-# TESTING
-# ============================================================================
-
-if __name__ == "__main__":
-    print("🧪 Dossier Embedding Storage Test")
-    print("=" * 60)
-    
-    import os
-    import tempfile
-    
-    # Create temporary test database
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as tmp:
-        test_db = tmp.name
-    
-    try:
-        # Initialize storage
-        print("\n1. Initializing storage...")
-        storage = DossierEmbeddingStorage(test_db)
-        print(f"   ✅ Storage initialized: {test_db}")
-        
-        # Test embedding storage
-        print("\n2. Storing fact embeddings...")
-        facts = [
-            ("fact_001", "dos_diet", "User is strictly vegetarian"),
-            ("fact_002", "dos_diet", "User avoids all meat products"),
-            ("fact_003", "dos_diet", "User prefers plant-based proteins"),
-            ("fact_004", "dos_tech", "User works with Python"),
-            ("fact_005", "dos_tech", "User prefers functional programming")
-        ]
-        
-        for fact_id, dossier_id, fact_text in facts:
-            success = storage.save_fact_embedding(fact_id, dossier_id, fact_text)
-            if success:
-                print(f"   ✅ Embedded: {fact_text[:40]}...")
-        
-        # Test search
-        print("\n3. Searching for similar facts...")
-        queries = [
-            "dietary preferences",
-            "programming languages",
-            "vegetarian food"
-        ]
-        
-        for query in queries:
-            results = storage.search_similar_facts(query, top_k=3, threshold=0.3)
-            print(f"\n   Query: '{query}'")
-            for fact_id, dossier_id, score in results:
-                print(f"     - {dossier_id}/{fact_id}: {score:.3f}")
-        
-        # Test vote tallying (simulate Multi-Vector Voting)
-        print("\n4. Simulating Multi-Vector Voting...")
-        incoming_facts = [
-            "User follows a vegan lifestyle",
-            "User does not eat eggs or dairy"
-        ]
-        
-        vote_tally = {}
-        for fact in incoming_facts:
-            results = storage.search_similar_facts(fact, top_k=5, threshold=0.4)
-            for _, dossier_id, score in results:
-                if dossier_id not in vote_tally:
-                    vote_tally[dossier_id] = {'hits': 0, 'score_sum': 0.0}
-                vote_tally[dossier_id]['hits'] += 1
-                vote_tally[dossier_id]['score_sum'] += score
-        
-        print(f"   Vote results:")
-        for dossier_id, stats in sorted(vote_tally.items(), key=lambda x: x[1]['hits'], reverse=True):
-            print(f"     - {dossier_id}: {stats['hits']} hits, total score: {stats['score_sum']:.3f}")
-        
-        # Test fact count
-        print("\n5. Checking fact counts...")
-        total = storage.get_fact_count()
-        diet_count = storage.get_fact_count("dos_diet")
-        tech_count = storage.get_fact_count("dos_tech")
-        print(f"   Total facts: {total}")
-        print(f"   Diet dossier: {diet_count} facts")
-        print(f"   Tech dossier: {tech_count} facts")
-        
-        print("\n" + "=" * 60)
-        print("✅ All tests passed!")
-        
-    finally:
-        # Cleanup
-        if os.path.exists(test_db):
-            os.remove(test_db)
-            print(f"🧹 Cleaned up test database")

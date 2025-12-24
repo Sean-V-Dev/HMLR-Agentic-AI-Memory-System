@@ -14,14 +14,14 @@ Architecture:
   or decides to create new dossier
 - Incremental Updates: Summaries updated with "old summary + new facts"
 
-Author: CognitiveLattice Team
-Created: 2025-12-15 (Phase 3: Dossier System)
+
 """
 
 import json
 import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
+from hmlr.core.model_config import model_config
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,9 @@ class DossierGovernor:
         # 2. LLM decides: append to existing or create new
         if candidates:
             logger.debug(f"Found {len(candidates)} candidate dossiers")
+            for c in candidates:
+                logger.debug(f"  Candidate: {c['dossier_id']} ({c['title']}) - {c['vote_hits']} hits, score {c['vote_score']:.2f}")
+            
             decision = await self._llm_decide_routing(facts, candidates)
             
             if decision['action'] == 'append':
@@ -153,14 +156,22 @@ class DossierGovernor:
         logger.debug(f"Multi-Vector Voting: searching with {len(facts)} facts")
         
         # 1. Search for EVERY fact in the packet
-        for i, fact in enumerate(facts, 1):
+        for i, fact_item in enumerate(facts, 1):
+            # Handle both string facts and dict facts
+            if isinstance(fact_item, dict):
+                fact_text = fact_item.get('text', fact_item.get('fact_text', str(fact_item)))
+            else:
+                fact_text = str(fact_item)
+            
+            logger.debug(f"  Searching for fact {i}: '{fact_text[:100]}'...")
+            
             results = self.dossier_storage.search_similar_facts(
-                query=fact,
+                query=fact_text,
                 top_k=10,  # Cast a wider net per fact
                 threshold=0.4  # Consistent with memory search threshold
             )
             
-            logger.debug(f"  Fact {i}: found {len(results)} matches")
+            logger.debug(f"    → Found {len(results)} matches")
             
             # 2. Tally the votes
             for fact_id, dossier_id, score in results:
@@ -232,7 +243,7 @@ class DossierGovernor:
                 'title': c['title'],
                 'summary': c['summary'],
                 'vote_hits': c['vote_hits'],
-                'existing_facts': c['facts'][:5]  # Show first 5 facts
+                'existing_facts': c['facts'][:50]  # Show up to 50 facts for full context (~2k tokens)
             })
         
         prompt = f"""You are a fact routing system. Decide whether new facts should be appended to an existing dossier or create a new dossier.
@@ -243,11 +254,33 @@ NEW FACTS TO ROUTE:
 CANDIDATE DOSSIERS (ranked by Multi-Vector Voting):
 {json.dumps(candidates_summary, indent=2)}
 
-DECISION RULES:
-1. If new facts semantically belong to an existing dossier (same topic, related concepts), APPEND
-2. If new facts form a distinct topic that doesn't fit existing dossiers, CREATE
-3. Consider the vote_hits: higher hits mean stronger semantic relationship
-4. Facts don't need to be identical - look for conceptual relationships
+DECISION RULES (in priority order):
+
+1. **DIRECT CAUSAL/IDENTITY RELATIONSHIPS (HIGHEST PRIORITY)**:
+   - If a new fact contains direct references like:
+     * "X is the same as Y"
+     * "X was renamed to Y" / "X is now called Y"
+     * "X is identical to Y"
+     * "X is also known as Y"
+     * "X is the old name for Y"
+   - AND an existing dossier contains entity Y (or X), you MUST APPEND to that dossier
+   - These are not semantic similarities - they are explicit identity statements
+   - Even if the topics seem different, direct causal links mean they belong together
+
+2. **TRANSITIVE RELATIONSHIPS**:
+   - If fact A references B, and an existing dossier contains a fact that references B, APPEND
+    -Only consideration: If the entities that have potential transitive relationships have identical names, but different contextual anchors, a new dossier can be created (e.g., "My coworkers name is Jordan" "Jordan is the capital of Jordan", these have the same exact entity names, but completely different contextual reference.)
+   - Example: New fact "B was renamed C" + Dossier has "A is the same as B" → APPEND
+
+3. **SEMANTIC SIMILARITY (LOWER PRIORITY)**:
+   - Only use semantic/topic-based reasoning if there are NO direct causal links
+   - Consider vote_hits: higher hits mean stronger semantic relationship
+   - Same topic or closely related concepts → APPEND
+
+4. **CREATE NEW ONLY WHEN**:
+   - No direct causal links to any existing dossier entities
+   - No strong semantic relationship (low vote_hits)
+   - Forms a completely distinct topic
 
 Return JSON:
 - To append: {{"action": "append", "target_dossier_id": "dos_xxx"}}
@@ -256,9 +289,9 @@ Return JSON:
 Decision:"""
         
         try:
-            response = self.llm_client.query_external_api(
+            response = await self.llm_client.query_external_api_async(
                 query=prompt,
-                model="gpt-4.1-mini"
+                model=model_config.get_synthesis_model()
             )
             
             # Extract JSON from response
@@ -296,8 +329,19 @@ Decision:"""
         logger.info(f"Appending {len(facts)} facts to dossier {dossier_id}")
         
         # 1. Add each fact
-        for fact_text in facts:
-            fact_id = self.id_generator.generate_id("fact")
+        for fact_item in facts:
+            # Extract fact_text and fact_id (if provided from fact_store)
+            if isinstance(fact_item, dict):
+                fact_text = fact_item.get('text', fact_item.get('fact_text', str(fact_item)))
+                fact_id = fact_item.get('fact_id')
+                source_turn_id = fact_item.get('source_turn_id')
+            else:
+                fact_text = str(fact_item)
+                fact_id = None
+                source_turn_id = None
+            
+            if not fact_id:
+                fact_id = self.id_generator.generate_id("fact")
             
             # Store fact in database
             success = self.storage.add_fact_to_dossier(
@@ -305,7 +349,7 @@ Decision:"""
                 fact_id=fact_id,
                 fact_text=fact_text,
                 source_block_id=source_block_id,
-                source_turn_id=None,  # Can be enhanced later with turn tracking
+                source_turn_id=source_turn_id,
                 confidence=1.0
             )
             
@@ -376,14 +420,26 @@ Decision:"""
         self.dossier_storage.save_dossier_search_embedding(dossier_id, search_summary)
         
         # 4. Add facts
-        for fact_text in facts:
-            fact_id = self.id_generator.generate_id("fact")
+        for fact_item in facts:
+            # Extract fact_text and fact_id (if provided from fact_store)
+            if isinstance(fact_item, dict):
+                fact_text = fact_item.get('text', fact_item.get('fact_text', str(fact_item)))
+                fact_id = fact_item.get('fact_id')
+                source_turn_id = fact_item.get('source_turn_id')
+            else:
+                fact_text = str(fact_item)
+                fact_id = None
+                source_turn_id = None
+            
+            if not fact_id:
+                fact_id = self.id_generator.generate_id("fact")
             
             self.storage.add_fact_to_dossier(
                 dossier_id=dossier_id,
                 fact_id=fact_id,
                 fact_text=fact_text,
                 source_block_id=source_block_id,
+                source_turn_id=source_turn_id,
                 confidence=1.0
             )
             
@@ -439,9 +495,9 @@ INSTRUCTIONS:
 UPDATED SUMMARY:"""
         
         try:
-            new_summary = self.llm_client.query_external_api(
+            new_summary = await self.llm_client.query_external_api_async(
                 query=prompt,
-                model="gpt-4.1-mini"
+                model=model_config.get_synthesis_model()
             )
             
             # Clean up response
@@ -478,24 +534,30 @@ UPDATED SUMMARY:"""
         Returns:
             Summary text
         """
-        prompt = f"""Generate a concise summary for a new fact dossier.
+        prompt = f"""You are a court stenographer creating a verbatim record. Your job is to restate facts EXACTLY as written with ZERO interpretation or elaboration.
 
 TITLE: {title}
 
 FACTS:
 {json.dumps(facts, indent=2)}
 
-Generate a 2-3 sentence summary that:
-1. Captures the essence of these facts
-2. Identifies any causal relationships
-3. Sets context for future facts
+CRITICAL RULES - VIOLATION MEANS FAILURE:
+1. ONLY restate what is explicitly written in the facts - no additions
+2. Do NOT add words like "city", "planet", "company", "person" unless the fact says so
+3. Do NOT add "formerly known as", "officially", "marked a shift", "impacts" or similar elaborations
+4. If a fact says ONLY "Mercury was renamed to Pluto" - DO NOT add "planet of Mercury renamed to planet Pluto" Do not use historical context unless *explicitly* stated.
+5. If a fact says "X = Y" - just say "X was renamed to Y" or "X is Y", nothing more
+6. Do NOT infer what type of entity something is (algorithm, city, etc) unless stated
+7. Keep it minimal - if you can restate in one sentence, do so
+
+GENERATE A LITERAL RESTATEMENT OF THE FACTS. Add NOTHING beyond what is written.
 
 SUMMARY:"""
         
         try:
-            summary = self.llm_client.query_external_api(
+            summary = await self.llm_client.query_external_api_async(
                 query=prompt,
-                model="gpt-4.1-mini"
+                model=model_config.get_synthesis_model()
             )
             
             summary = summary.strip()
@@ -533,7 +595,7 @@ SUMMARY:"""
         Returns:
             Search-optimized summary text
         """
-        prompt = f"""Generate a SEARCH-OPTIMIZED summary for semantic retrieval.
+        prompt = f"""You are a technical indexer creating search keywords. Extract ONLY the exact terms present in the facts with NO additions, interpretations, or assumptions.
 
 TITLE: {title}
 SUMMARY: {summary}
@@ -541,23 +603,23 @@ SUMMARY: {summary}
 FACTS:
 {json.dumps(facts, indent=2)}
 
-Create a search summary that:
-1. Uses BROAD, GENERAL language (not narrow/specific)
-2. Includes TOPIC KEYWORDS and related concepts
-3. Captures "what this is about" at a high level
-4. Would match general queries about this subject
-5. Keep it to 2-3 sentences maximum
+CRITICAL RULES - DO NOT VIOLATE:
+1. Use ONLY words that appear in the facts - no additions
+2. Do NOT add "city", "company", "algorithm", "person" unless explicitly stated
+3. Do NOT add "formerly", "officially", "marked", "impacts", "reflecting" or similar words
+4. If facts say "Phoenix renamed to Aether", use those exact terms - nothing more
+5. Do NOT infer entity types - just use the names as given
+6. Include key identifiers verbatim from facts (names, numbers, specific terms)
+7. If you can't broaden without adding words, just restate the summary
 
-Example:
-Input: Facts about "Tesla Model 3 is electric", "has 300 mile range"
-Output: "User's Tesla Model 3 electric vehicle for personal transportation, daily commuting and travel. Electric sedan with long-range capability, autopilot technology, and modern features for efficient driving."
+Create a search summary by combining the key terms from the facts. Add NO extra words.
 
 SEARCH SUMMARY:"""
         
         try:
-            search_summary = self.llm_client.query_external_api(
+            search_summary = await self.llm_client.query_external_api_async(
                 query=prompt,
-                model="gpt-4.1-mini"
+                model=model_config.get_synthesis_model()
             )
             
             search_summary = search_summary.strip()

@@ -8,15 +8,16 @@ to the persistent storage layer. It handles:
 - Logging conversation turns
 - Retrieving conversation history
 
-Author: CognitiveLattice Team
-Created: 2025-10-10
+
 """
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
-    from .storage import Storage
     from .models import (
         ConversationTurn, 
         Keyword, 
@@ -24,6 +25,7 @@ try:
         Affect,
         create_day_id
     )
+    from .sliding_window import SlidingWindow
     from .id_generator import (
         generate_turn_id,
         generate_session_id,
@@ -57,30 +59,18 @@ class ConversationManager:
     Future: Add sliding window, topic tracking, smart retrieval.
     """
     
-    def __init__(self, storage: Storage = None):
+    def __init__(self, storage=None, sliding_window: Optional[SlidingWindow] = None):
         """
         Initialize conversation manager.
-        
-        Args:
-            storage: Storage instance. If None, creates default storage.
         """
         self.storage = storage or Storage()
-        self.turn_sequence_by_session: Dict[str, int] = {}  # Track sequence per session
+        self.sliding_window = sliding_window
         self.current_day = create_day_id()
-        
-        # NEW: Sliding window for context deduplication
-        try:
-            from .models import SlidingWindow
-        except ImportError:
-            from models import SlidingWindow
-        
-        self.sliding_window = SlidingWindow()
-        self.sliding_window.max_turns = 25  # Keep last 25 turns in window
         
         # Ensure today exists
         self._ensure_day_exists(self.current_day)
         
-        print(f"💾 ConversationManager initialized (day: {self.current_day})")
+        logger.info(f"ConversationManager initialized (day: {self.current_day})")
 
     
     def _ensure_day_exists(self, day_id: str) -> None:
@@ -88,7 +78,7 @@ class ConversationManager:
         existing = self.storage.get_day(day_id)
         if not existing:
             self.storage.create_day(day_id)
-            print(f"   📅 Created new day node: {day_id}")
+            logger.info(f"   Created new day node: {day_id}")
     
     def log_turn(
         self, 
@@ -122,20 +112,20 @@ class ConversationManager:
         # Check if day rolled over
         today = create_day_id()
         if today != self.current_day:
-            print(f"   📅 Day rollover detected: {self.current_day} → {today}")
+            logger.info(f"   Day rollover detected: {self.current_day} -> {today}")
             self.current_day = today
             self._ensure_day_exists(today)
-            self.turn_sequence_by_session.clear()  # Reset all counters for new day
+            # self.turn_sequence_by_session.clear() # REMOVED: Legacy artifact causing crash
         
         # Generate or validate session_id
         if not session_id:
             session_id = generate_session_id()
-            print(f"   🆔 Generated new session ID: {session_id}")
+            logger.info(f"   Generated new session ID: {session_id}")
         
-        # Get turn sequence for this session
-        if session_id not in self.turn_sequence_by_session:
-            self.turn_sequence_by_session[session_id] = 0
-        turn_sequence = self.turn_sequence_by_session[session_id]
+        # Get turn sequence for this session from DB (Stateless)
+        cursor = self.storage.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM metadata_staging WHERE session_id = ?", (session_id,))
+        turn_sequence = cursor.fetchone()[0]
         
         # Generate unique turn ID
         turn_id = generate_turn_id()
@@ -163,22 +153,6 @@ class ConversationManager:
         
         # Process and save derived metadata with lineage
         keyword_ids = []
-        if keywords:
-            for idx, keyword_text in enumerate(keywords, start=1):
-                keyword_id = generate_keyword_id(turn_id, idx)
-                keyword = Keyword(
-                    keyword_id=keyword_id,
-                    keyword=keyword_text,
-                    source_turn_id=turn_id,
-                    day_id=self.current_day,
-                    first_mentioned=turn.timestamp,
-                    last_mentioned=turn.timestamp,
-                    derived_from=turn_id,
-                    derived_by="conversation_manager_v1",
-                    confidence=0.85  # Default confidence
-                )
-                self.storage.add_keyword(self.current_day, keyword)
-                keyword_ids.append(keyword_id)
         
         # Save summary if provided
         summary_id = None
@@ -214,7 +188,7 @@ class ConversationManager:
                 derived_by="conversation_manager_v1",
                 detection_method="provided"
             )
-            self.storage.add_affect(self.current_day, affect_obj)
+            
         
         # Update turn with lineage references
         if keyword_ids or summary_id or affect_id:
@@ -224,20 +198,14 @@ class ConversationManager:
             # Re-save turn with lineage references
             self.storage.stage_turn_metadata(turn)
         
-        # Increment sequence counter
-        self.turn_sequence_by_session[session_id] += 1
-        
-        # NEW: Add turn to sliding window for deduplication
-        self.sliding_window.add_turn(turn)
+        # Incrementing the counter is no longer needed as we query COUNT(*) from DB.
         
         # Debug output
-        print(f"   💾 Logged turn {turn_id[:30]}... (seq={turn_sequence}) to day {self.current_day}")
-        if keyword_ids:
-            print(f"      🔑 Saved {len(keyword_ids)} keywords with lineage")
+        logger.debug(f"   Logged turn {turn_id[:30]}... (seq={turn_sequence}) to day {self.current_day}")
         if summary_id:
-            print(f"      📝 Saved summary with lineage")
+            logger.debug(f"      Saved summary with lineage")
         if affect_id:
-            print(f"      😊 Saved affect with lineage")
+            logger.debug(f"      Saved affect with lineage")
         
         return turn
     
@@ -270,24 +238,7 @@ class ConversationManager:
         """
         Filter retrieved context to remove turns already in sliding window.
         
-        Two-tier filtering logic:
-        1. Block turns currently in window (redundant)
-        2. Allow turns that were pruned (needed for returning to old topics)
         
-        Example scenario:
-        - Turns 1-10: Tomatoes
-        - Turns 11-25: Cars (pushes tomatoes out of window)
-        - Turn 26: "What about tomatoes?" 
-          → Retrieves turns 1-6 (pruned but relevant) ✅
-          → Blocks turns 7-10 (still in window) ❌
-        
-        This implements flowchart node G's filtering logic.
-        
-        Args:
-            retrieved_context: RetrievedContext object from crawler
-            
-        Returns:
-            Filtered RetrievedContext with duplicates removed
         """
         if not hasattr(retrieved_context, 'contexts') or not retrieved_context.contexts:
             return retrieved_context
@@ -315,20 +266,20 @@ class ConversationManager:
                 if turn and turn.detail_level != 'VERBATIM':
                     # Compressed - user wants full details
                     filtered_contexts.append(ctx)
-                    print(f"      📌 Keeping compressed turn {turn_id[:30]}... for full details")
+                    print(f"      Keeping compressed turn {turn_id[:30]}... for full details")
                 elif similarity >= 0.6:
                     # High similarity - user explicitly asked about this
                     # (might be omitted from window section due to token budget)
                     filtered_contexts.append(ctx)
-                    print(f"      📌 Keeping high-similarity turn {turn_id[:30]}... (sim={similarity:.3f})")
+                    print(f"      Keeping high-similarity turn {turn_id[:30]}... (sim={similarity:.3f})")
                 else:
-                    print(f"      🔄 Skipped already-loaded turn: {turn_id[:30]}...")
+                    print(f"      Skipped already-loaded turn: {turn_id[:30]}...")
         
         filtered_count = len(filtered_contexts)
         removed_count = original_count - filtered_count
         
         if removed_count > 0:
-            print(f"   🔍 Filtered out {removed_count} already-loaded turn(s)")
+            print(f"   Filtered out {removed_count} already-loaded turn(s)")
             print(f"      Kept: {filtered_count} new contexts")
         
         # Create new RetrievedContext with filtered results
@@ -441,128 +392,3 @@ class ConversationManager:
             self.storage.close()
 
 
-# ============================================================================
-# TESTING
-# ============================================================================
-
-if __name__ == "__main__":
-    print("🧪 ConversationManager Test")
-    print("=" * 60)
-    
-    import os
-    
-    # Use in-memory database for testing
-    test_storage = Storage(":memory:")
-    
-    # Test 1: Create manager
-    print("\n1. Creating ConversationManager...")
-    manager = ConversationManager(test_storage)
-    print(f"   ✅ Manager created for day: {manager.current_day}")
-    
-    # Test 2: Log first turn
-    print("\n2. Logging first turn (Session 1)...")
-    turn1 = manager.log_turn(
-        session_id="test_session_001",
-        user_message="What's a good recipe for dinner?",
-        assistant_response="How about a simple pasta carbonara? It's quick and delicious!",
-        keywords=["recipe", "dinner", "pasta"],
-        summary="User asks for dinner recipe, assistant suggests pasta carbonara",
-        affect="curious",
-        affect_intensity=0.7,
-        affect_confidence=0.9
-    )
-    print(f"   ✅ Turn logged: ID={turn1.turn_id[:30]}... (seq={turn1.turn_sequence})")
-    
-    # Test 3: Log second turn (same session)
-    print("\n3. Logging second turn (Session 1)...")
-    turn2 = manager.log_turn(
-        session_id="test_session_001",
-        user_message="That sounds great! What ingredients do I need?",
-        assistant_response="You'll need pasta, eggs, parmesan cheese, and bacon.",
-        keywords=["ingredients", "pasta", "carbonara"],
-        summary="User asks about ingredients, assistant lists carbonara ingredients",
-        affect="engaged",
-        affect_intensity=0.8,
-        affect_confidence=0.85
-    )
-    print(f"   ✅ Turn logged: ID={turn2.turn_id[:30]}... (seq={turn2.turn_sequence})")
-    
-    # Test 4: Log turn from different session (same day)
-    print("\n4. Logging turn from new session (Session 2)...")
-    turn3 = manager.log_turn(
-        session_id="test_session_002",
-        user_message="Tell me a joke",
-        assistant_response="Why did the scarecrow win an award? Because he was outstanding in his field!",
-        keywords=["joke", "humor"],
-        summary="User requests joke, assistant tells scarecrow joke",
-        affect="amused",
-        affect_intensity=0.6,
-        affect_confidence=0.75
-    )
-    print(f"   ✅ Turn logged: ID={turn3.turn_id[:30]}... (seq={turn3.turn_sequence})")
-    
-    # Test 5: Get today's turns
-    print("\n5. Retrieving all turns from today...")
-    all_turns = manager.get_todays_turns()
-    print(f"   ✅ Found {len(all_turns)} turns")
-    for turn in all_turns:
-        print(f"      Turn {turn.turn_id} (Session: {turn.session_id})")
-        print(f"        User: {turn.user_message[:40]}...")
-    
-    # Test 6: Get today's sessions
-    print("\n6. Retrieving all sessions from today...")
-    sessions = manager.get_todays_sessions()
-    print(f"   ✅ Found {len(sessions)} sessions: {sessions}")
-    
-    # Test 7: Get conversation summary
-    print("\n7. Getting conversation summary...")
-    summary = manager.get_conversation_summary()
-    print(f"   ✅ Summary for {summary['day_id']}:")
-    print(f"      Total sessions: {summary['total_sessions']}")
-    print(f"      Total turns: {summary['total_turns']}")
-    print(f"      Sessions: {summary['session_ids']}")
-    
-    # Test 8: Detailed turn info
-    print("\n8. Detailed turn information...")
-    for turn_info in summary['turns']:
-        print(f"   Turn {turn_info['turn_id'][:30]}... ({turn_info['session_id']}):")
-        print(f"      User: {turn_info['user_message_preview']}")
-        print(f"      Keywords: {turn_info['keywords']}")
-    
-    # Test 9: Test lineage tracking
-    print("\n9. Testing lineage tracking...")
-    if turn1.keyword_ids:
-        print(f"   Turn 1 has {len(turn1.keyword_ids)} keywords with lineage")
-        # Retrieve first keyword to verify lineage
-        first_keyword = test_storage.get_keyword_by_id(turn1.keyword_ids[0])
-        if first_keyword:
-            print(f"      Keyword: '{first_keyword.keyword}'")
-            print(f"      Derived from: {first_keyword.derived_from[:30]}...")
-            print(f"      Derived by: {first_keyword.derived_by}")
-    
-    if turn1.summary_id:
-        print(f"   Turn 1 has summary with lineage")
-        summary_obj = test_storage.get_summary_by_id(turn1.summary_id)
-        if summary_obj:
-            print(f"      Summary: '{summary_obj.user_query_summary[:50]}...'")
-            print(f"      Derived from: {summary_obj.derived_from[:30]}...")
-    
-    if turn1.affect_ids:
-        print(f"   Turn 1 has {len(turn1.affect_ids)} affect entries with lineage")
-        affect_obj = test_storage.get_affect_by_id(turn1.affect_ids[0])
-        if affect_obj:
-            print(f"      Affect: {affect_obj.affect_label} (intensity={affect_obj.intensity})")
-            print(f"      Derived from: {affect_obj.derived_from[:30]}...")
-    
-    # Test 10: Test lineage chain
-    print("\n10. Testing lineage chain retrieval...")
-    if turn1.summary_id:
-        chain = test_storage.get_lineage_chain(turn1.summary_id)
-        print(f"   Lineage chain for summary:")
-        for i, item in enumerate(chain, 1):
-            print(f"      {i}. {item['type']}: {item['id'][:30]}...")
-    
-    manager.close()
-    
-    print("\n" + "=" * 60)
-    print("🎉 All ConversationManager tests passed!")

@@ -130,7 +130,7 @@ class ChunkEngine:
                 chunk_type='paragraph',
                 text_verbatim=para_text.strip(),
                 lexical_filters=self._extract_keywords(para_text),
-                parent_chunk_id=None,  # Will link to bridge_block later (Phase 11)
+                parent_chunk_id=None,  
                 turn_id=turn_id,
                 span_id=span_id,
                 token_count=self._estimate_tokens(para_text),

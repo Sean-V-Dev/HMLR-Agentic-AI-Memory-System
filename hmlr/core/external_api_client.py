@@ -6,18 +6,30 @@ Sends relevant chunks to external APIs (OpenAI, Claude, etc.) for enhanced analy
 import os
 import json
 import requests
+import httpx
+import asyncio
 import base64
+import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import time
-from hmlr.core.telemetry import get_tracer
+from .exceptions import ApiConnectionError, ModelNotAvailableError, ConfigurationError
+from .config import config
+from .model_config import model_config
+# Lazy loaded imports
+# from google import genai
+# from xai_sdk import Client
+# import anthropic
+# from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 # Try to load environment variables, but don't fail if dotenv isn't available
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    print("💡 python-dotenv not available, reading .env manually...")
+    logger.warning("python-dotenv not available, reading .env manually")
     # Manually read .env file if dotenv is not available
     env_path = ".env"
     if os.path.exists(env_path):
@@ -28,208 +40,70 @@ except ImportError:
                     os.environ[key] = value
 
 class ExternalAPIClient:
-    def summarize_analyses(self, analyses: List[Dict[str, Any]], original_query: str) -> Dict[str, Any]:
+    def __init__(self, api_provider="openai", api_key: Optional[str] = None):
         """
-        Sends multiple analysis results to the external API for a final summary.
+        Initialize ExternalAPIClient with API provider configuration.
+
+        Args:
+            api_provider: API provider to use ("openai", "gemini", "grok", "anthropic")
+            api_key: Optional API key. If not provided, will look in environment.
         """
-        print(f"🌐 Summarizing {len(analyses)} analysis results for query: '{original_query}'")
-
-        # Prepare the content for the summarization prompt
-        # We'll extract just the core analysis to keep the prompt focused
-        core_analyses = [
-            res.get("external_analysis", {}) for res in analyses if "external_analysis" in res
-        ]
-        if not core_analyses:
-            print("⚠️ No analysis results to summarize.")
-            return {"error": "No content to summarize."}
-            
-        analysis_json_str = json.dumps(core_analyses, indent=2)
-
-        prompt = f"""The user asked the following question: \"{original_query}\"
-
-Based on the following chunk-by-chunk JSON analyses of a document, synthesize a single, comprehensive, and user-friendly answer.
-Do not present the information on a \"per-chunk\" basis. Instead, consolidate all the information into a unified response. For example, if the user asks for characters, provide a single list of all characters found across all chunks under a \"Characters\" heading.
-
-Here is the detailed analysis data from multiple document chunks:
-{analysis_json_str}
-
-Please provide a final, consolidated answer based on this data. The answer should be in a clear, readable format. Interpret the JSON and present the information naturally.
-"""
-
-        try:
-            # Using gpt-4.1-mini for stability and reliability
-            model = "gpt-4.1-mini"
-            messages = [
-                {"role": "system", "content": "You are an expert synthesis agent. Your job is to combine multiple detailed JSON analyses into a single, coherent, and user-friendly answer."},
-                {"role": "user", "content": prompt}
-            ]
-
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-
-            payload = {
-                "model": model,
-                "messages": messages,
-                "max_tokens": 3000,  # Increased for comprehensive multi-chunk summaries
-                "temperature": 0.5,
-            }
-
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=120 # Increased timeout for potentially large summarization task
-            )
-
-            response.raise_for_status()
-            response_json = response.json()
-            
-            summary_content = response_json["choices"][0]["message"]["content"]
-            
-            print("✅ Summarization complete.")
-            return {
-                "summary_text": summary_content,
-                "tokens_used": response_json.get("usage", {}).get("total_tokens"),
-                "model_used": response_json.get("model", model)
-            }
-
-        except Exception as e:
-            print(f"Error summarizing analyses: {e}")
-            return {"error": str(e), "summary_text": "Could not generate summary."}
-
-    def create_task_plan(self, user_query: str) -> Dict[str, Any]:
-        """
-        Asks the external API to create a step-by-step plan for a given query.
-        """
-        print(f"📋 Asking external API to create a plan for: '{user_query}'")
-        
-        # The current date is added to give the LLM temporal context.
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        
-        prompt = f"""The user wants to accomplish the following task: "{user_query}"
-
-Your role is to act as an expert planner. Break down this task into a series of clear, actionable steps.
-Do NOT attempt to execute the steps yourself.
-Return ONLY a numbered list of the steps required to complete the task.
-
-CRITICAL REQUIREMENT - READ CAREFULLY:
-You MUST combine research and booking actions into single steps. This is absolutely required.
-Do NOT create separate "research" and "book" steps - they MUST be combined.
-
-FORBIDDEN PATTERNS (DO NOT DO THIS):
-❌ Step X: "Research flights"  Step Y: "Book flights"
-❌ Step X: "Find hotels"  Step Y: "Book hotel" 
-❌ Step X: "Look for restaurants"  Step Y: "Make reservations"
-
-REQUIRED PATTERNS (DO THIS INSTEAD):
-✅ "Research and select round-trip flights, comparing prices and times"
-✅ "Find and book accommodation that fits budget and location preferences"
-✅ "Plan dining options and make necessary restaurant reservations"
-
-EXAMPLE FOR TRAVEL PLANNING:
-User Query: "Help me plan a trip to Paris"
-CORRECT Response:
-1. Determine travel dates and duration
-2. Research and select round-trip flights to Paris (compare airlines, prices, schedules)
-3. Find and book accommodation for the stay (hotels, Airbnb, etc.)
-4. Plan daily itinerary with attractions, activities, and dining
-5. Prepare travel documents and pack for the trip
-
-WRONG Response (DO NOT DO):
-1. Research flight options ❌
-2. Book selected flight ❌
-3. Research hotels ❌  
-4. Book hotel room ❌
-
-The current date is {current_date}. 
-
-Remember: COMBINE research and booking into single steps. Do not separate them.
-
-Now create the plan for: "{user_query}"
-"""
-
-        try:
-            model = "gpt-4.1-mini"
-            messages = [
-                {"role": "system", "content": "You are a world-class planner. CRITICAL REQUIREMENT: You MUST combine research and booking actions into single cohesive steps. NEVER separate 'research X' and 'book X' into different steps - they must be combined. You only provide consolidated plans, you do not execute them."},
-                {"role": "user", "content": prompt},
-                
-            ]
-            
-
-            response_data = self._call_openai_api(model, messages, max_tokens=2000, temperature=0.6)  # Increased for complex plans
-            
-            plan_text = response_data["choices"][0]["message"]["content"]
-            
-            # Parse the plan text into a list of steps
-            plan_steps = []
-            lines = plan_text.strip().split('\n')
-            for line in lines:
-                line = line.strip()
-                if line and (line[0].isdigit() or line.startswith('-') or line.startswith('*')):
-                    # Remove numbering and bullet points
-                    clean_step = line
-                    if '. ' in line:
-                        clean_step = line.split('. ', 1)[1] if len(line.split('. ', 1)) > 1 else line
-                    elif line.startswith('- '):
-                        clean_step = line[2:]
-                    elif line.startswith('* '):
-                        clean_step = line[2:]
-                    
-                    if clean_step.strip():
-                        plan_steps.append(clean_step.strip())
-            
-            # Fallback: if no steps parsed, split by lines and filter
-            if not plan_steps:
-                for line in lines:
-                    line = line.strip()
-                    if line and len(line) > 10:  # Reasonable step length
-                        plan_steps.append(line)
-            
-            return {
-                "success": True,
-                "plan": plan_steps,  # Return as 'plan' not 'plan_text'
-                "plan_text": plan_text,  # Keep original text too
-                "tokens_used": response_data.get("usage", {}).get("total_tokens", 0)
-            }
-
-        except Exception as e:
-            print(f"❌ Error creating task plan: {e}")
-            return {"success": False, "error": str(e)}
-
-    """
-    Client for sending CognitiveLattice chunks to external APIs
-    """
-    
-    def __init__(self, api_provider="openai"):
-        self.tracer = get_tracer(__name__)
         self.api_provider = api_provider
-        self.api_key = self._load_api_key()
+        self.api_key = self._load_api_key(api_key)
         self.base_url = self._get_base_url()
         # Cache available models for this API key (used for graceful fallbacks)
         try:
             self.available_models = self._fetch_available_models()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to fetch available models for {api_provider}: {e}", exc_info=True)
             self.available_models = []
         
-    def _load_api_key(self) -> str:
-        """Load API key from environment"""
+    def _load_api_key(self, provided_key: Optional[str] = None) -> str:
+        """Load API key from argument or environment"""
         if self.api_provider == "openai":
-            key = os.getenv("OPENAI_API_KEY")
+            key = provided_key or os.getenv("OPENAI_API_KEY")
             if not key:
-                raise ValueError("OPENAI_API_KEY not found in environment variables")
+                raise ConfigurationError("OPENAI_API_KEY not found in arguments or environment")
+            # Initialize async OpenAI client
+            from openai import AsyncOpenAI
+            self.async_openai_client = AsyncOpenAI(api_key=key)
+            return key
+        elif self.api_provider == "gemini":
+            key = provided_key or os.getenv("GEMINI_API_KEY")
+            if not key:
+                raise ConfigurationError("GEMINI_API_KEY not found in arguments or environment")
+            from google import genai
+            self.genai_client = genai.Client(api_key=key)
+            return key
+        elif self.api_provider == "grok":
+            key = provided_key or os.getenv("XAI_API_KEY")
+            if not key:
+                raise ConfigurationError("XAI_API_KEY not found in arguments or environment")
+            return key
+        elif self.api_provider == "anthropic":
+            key = provided_key or os.getenv("ANTHROPIC_API_KEY")
+            if not key:
+                raise ConfigurationError("ANTHROPIC_API_KEY not found in arguments or environment")
+            import anthropic
+            self.anthropic_client = anthropic.Anthropic(api_key=key)
+            # Initialize async Anthropic client
+            self.async_anthropic_client = anthropic.AsyncAnthropic(api_key=key)
             return key
         else:
-            raise ValueError(f"Unsupported API provider: {self.api_provider}")
+            raise ConfigurationError(f"Unsupported API provider: {self.api_provider}")
     
     def _get_base_url(self) -> str:
         """Get base URL for API provider"""
         if self.api_provider == "openai":
             return "https://api.openai.com/v1"
+        elif self.api_provider == "gemini":
+            return ""  # Gemini uses SDK, not REST base URL
+        elif self.api_provider == "grok":
+            return ""  # Grok uses SDK, not REST base URL
+        elif self.api_provider == "anthropic":
+            return ""  # Anthropic uses SDK, not REST base URL
         else:
-            raise ValueError(f"Unsupported API provider: {self.api_provider}")
+            raise ConfigurationError(f"Unsupported API provider: {self.api_provider}")
 
     def _fetch_available_models(self) -> List[str]:
         """Fetch available model ids for this API key."""
@@ -240,48 +114,54 @@ Now create the plan for: "{user_query}"
             data = resp.json()
             return [m.get("id") for m in data.get("data", []) if m.get("id")]
         except Exception as e:
-            print(f"⚠️ Could not fetch available models: {e}")
+            logger.error(f"Could not fetch available models: {e}", exc_info=True)
+            # Still return empty list but log as warning, 
+            # as this shouldn't necessarily block everything but isn't "silent" anymore
             return []
     
-    def query_external_api(self, query: str, max_tokens: int = 2000, model: str = "gpt-4.1-mini") -> str:
+    def query_external_api(self, query: str, max_tokens: int = None, model: str = None, **options) -> str:
         """
         Send a direct query to external API for simple questions and chat
         
         Args:
             query (str): The user's question or chat message
-            max_tokens (int): Maximum tokens for response (default: 2000)
-                             - Use 1500 for short Q&A responses
-                             - Use 2000-3000 for detailed explanations
-                             - Use 4000-8000 for large structured outputs (plans, lists)
-            model (str): Model to use (default: "gpt-4.1-mini")
-                        - Use "gpt-4.1-nano" for fast, cheap metadata extraction
-                        - Use "gpt-4.1-mini" for general responses
-            
-        Returns:
-            str: The response from the external API
+            max_tokens (int): Maximum tokens for response
+            model (str): Model to use
+            **options: Additional options (headers, timeout, provider_params, etc.)
+                - headers (dict): Custom HTTP headers
+                - timeout (int): Request timeout in seconds (default: 60)
+                - temperature (float): Override default temperature
+                - Additional provider-specific params passed through
         """
+        max_tokens = max_tokens or model_config.MAX_RESPONSE_TOKENS
+        model = model or model_config.get_main_model()
+        
+        # Ensure standard options have defaults if not provided
+        options.setdefault('timeout', 60)
+        options.setdefault('temperature', 0.1)
+        
         try:
-            print(f"🌐 Sending direct query to external API (model: {model})...")
+            logger.debug(f"Sending direct query to external API (model: {model}, options: {list(options.keys())})...")
             
             # Get current date for context
             from datetime import datetime
             current_date = datetime.now().strftime("%B %d, %Y")
             current_month = datetime.now().strftime("%B")
             
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-            
             messages = [
                 {"role": "system", "content": f"You are a helpful AI assistant. Today's date is {current_date}. When answering questions about 'this time of year' or current conditions, use {current_month} {datetime.now().year} as the reference point. Provide clear, informative responses to user questions."},
                 {"role": "user", "content": query}
             ]
             
-            # Prefer using the generalized _call_openai_api which includes
-            # endpoint fallback logic (chat.completions -> /responses) and
-            # normalizes results to a chat-like shape.
-            response_json = self._call_openai_api(model, messages, max_tokens=max_tokens, temperature=0.7)
+            # Route to appropriate API based on provider
+            if self.api_provider == "gemini":
+                response_json = self._call_gemini_api(model, messages, max_tokens=max_tokens, **options)
+            elif self.api_provider == "grok":
+                response_json = self._call_grok_api(model, messages, max_tokens=max_tokens, **options)
+            elif self.api_provider == "anthropic":
+                response_json = self._call_anthropic_api(model, messages, max_tokens=max_tokens, **options)
+            else:  # Default to OpenAI
+                response_json = self._call_openai_api(model, messages, max_tokens=max_tokens, **options)
 
             # Extract content from normalized response shape
             try:
@@ -299,511 +179,486 @@ Now create the plan for: "{user_query}"
             return content
             
         except Exception as e:
-            print(f"❌ Direct query failed: {e}")
-            error_msg = f"I apologize, but I'm having trouble connecting to provide an answer right now. Error: {str(e)}"
-            # Ensure error message is always a string
-            return str(error_msg)
+            logger.error(f"Direct query failed: {e}", exc_info=True)
+            raise ApiConnectionError(f"Failed to connect to external API: {str(e)}") from e
     
-    def analyze_chunk_with_external_api(self, chunk_data: Dict[str, Any], analysis_type: str = "comprehensive") -> Dict[str, Any]:
+    async def query_external_api_async(self, query: str, max_tokens: int = None, model: str = None, **options) -> str:
         """
-        Send a chunk to external API for enhanced analysis
+        Async version: Send a direct query to external API for simple questions and chat
         
         Args:
-            chunk_data: The chunk metadata from CognitiveLattice RAG system
-            analysis_type: Type of analysis ("comprehensive", "factual", "technical", "visual")
-        
-        Returns:
-            Enhanced analysis results from external API
+            query (str): The user's question or chat message
+            max_tokens (int): Maximum tokens for response
+            model (str): Model to use
+            **options: Additional options (headers, timeout, provider_params, etc.)
+                - headers (dict): Custom HTTP headers
+                - timeout (int): Request timeout in seconds (default: 60)
+                - temperature (float): Override default temperature
+                - Additional provider-specific params passed through
         """
-        print(f"🌐 Sending {chunk_data['chunk_id']} to {self.api_provider.upper()} for {analysis_type} analysis...")
+        max_tokens = max_tokens or model_config.MAX_RESPONSE_TOKENS
+        model = model or model_config.get_main_model()
         
-        # Prepare the prompt based on analysis type
-        prompt = self._create_analysis_prompt(chunk_data, analysis_type)
+        # Ensure standard options have defaults if not provided
+        options.setdefault('timeout', 60)
+        options.setdefault('temperature', 0.1)
         
         try:
-            if self.api_provider == "openai":
-                response = self._call_openai_api_for_analysis(prompt, chunk_data)
-            else:
-                raise ValueError(f"Unsupported provider: {self.api_provider}")
+            logger.debug(f"Sending async query to external API (model: {model}, options: {list(options.keys())})...")
             
-            # Process and structure the response
-            enhanced_analysis = self._process_api_response(response, chunk_data, analysis_type)
+            # Get current date for context
+            from datetime import datetime
+            current_date = datetime.now().strftime("%B %d, %Y")
+            current_month = datetime.now().strftime("%B")
             
-            print(f"✅ Enhanced analysis completed for {chunk_data['chunk_id']}")
-            return enhanced_analysis
+            messages = [
+                {"role": "system", "content": f"You are a helpful AI assistant. Today's date is {current_date}. When answering questions about 'this time of year' or current conditions, use {current_month} {datetime.now().year} as the reference point. Provide clear, informative responses to user questions."},
+                {"role": "user", "content": query}
+            ]
+            
+            # Route to appropriate API based on provider
+            if self.api_provider == "gemini":
+                response_json = await self._call_gemini_api_async(model, messages, max_tokens=max_tokens, **options)
+            elif self.api_provider == "grok":
+                response_json = await self._call_grok_api_async(model, messages, max_tokens=max_tokens, **options)
+            elif self.api_provider == "anthropic":
+                response_json = await self._call_anthropic_api_async(model, messages, max_tokens=max_tokens, **options)
+            else:  # Default to OpenAI
+                response_json = await self._call_openai_api_async(model, messages, max_tokens=max_tokens, **options)
+
+            # Extract content from normalized response shape
+            try:
+                content = response_json["choices"][0]["message"]["content"]
+                # Ensure content is a string
+                if not isinstance(content, str):
+                    content = str(content)
+            except Exception:
+                # Best-effort fallback: dump the raw JSON if structure differs
+                content = json.dumps(response_json)
+                # Ensure content is always a string
+                if not isinstance(content, str):
+                    content = str(content)
+
+            return content
             
         except Exception as e:
-            print(f"❌ External API analysis failed for {chunk_data['chunk_id']}: {e}")
-            return self._create_fallback_response(chunk_data, str(e))
+            logger.error(f"Async query failed: {e}", exc_info=True)
+            raise ApiConnectionError(f"Failed to connect to external API: {str(e)}") from e
     
-    def _create_analysis_prompt(self, chunk_data: Dict[str, Any], analysis_type: str) -> str:
-        """Create specialized prompts for different analysis types"""
-        
-        base_content = chunk_data.get("content", "")
-        chunk_id = chunk_data.get("chunk_id", "unknown")
-        source_type = chunk_data.get("source_type", "unknown")
-        
-        prompts = {
-            "comprehensive": f"""Analyze this content chunk from a {source_type} document and provide comprehensive insights:
+    def _call_openai_api(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Make API call to OpenAI with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        timeout = options.get('timeout', 60)
+        custom_headers = options.get('headers', {})
 
-CHUNK ID: {chunk_id}
-CONTENT:
-{base_content}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        headers.update(custom_headers)
 
-Please provide:
-1. **Key Insights**: Main topics, themes, and important information
-2. **Factual Extraction**: Specific facts, numbers, dates, names, locations
-3. **Relationships**: Connections to other concepts or entities mentioned
-4. **Action Items**: Any procedures, instructions, or actionable information
-5. **Context Clues**: Implicit information that helps understand the broader document
-6. **Questions Raised**: What questions does this content raise that might be answered elsewhere?
-
-Format your response as structured JSON with these categories.""",
-
-            "factual": f"""Extract and structure all factual information from this {source_type} content:
-
-CHUNK ID: {chunk_id}
-CONTENT:
-{base_content}
-
-Extract as structured data:
-- Entities (people, places, organizations, products)
-- Numbers and measurements
-- Dates and times
-- Procedures and steps
-- Technical specifications
-- Requirements and constraints
-
-Return as structured JSON.""",
-
-            "technical": f"""Provide technical analysis of this {source_type} content:
-
-CHUNK ID: {chunk_id}
-CONTENT:
-{base_content}
-
-Focus on:
-- Technical procedures and instructions
-- Specifications and requirements
-- Safety considerations
-- Troubleshooting information
-- Installation or setup steps
-- Maintenance procedures
-
-Return detailed technical breakdown as JSON.""",
-
-            "visual": f"""Analyze this content for visual and multimodal elements:
-
-CHUNK ID: {chunk_id}
-CONTENT:
-{base_content}
-
-Identify:
-- References to visual elements (diagrams, charts, images)
-- Spatial relationships and layouts
-- Visual cues and formatting
-- Cross-references to figures or tables
-- Description of visual processes
-
-Return analysis as structured JSON."""
+        payload = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
         }
         
-        return prompts.get(analysis_type, prompts["comprehensive"])
-    
+        # Add provider-specific options to payload
+        # Skip internal HMLR options that shouldn't go to OpenAI
+        internal_options = {'temperature', 'timeout', 'headers'}
+        for k, v in options.items():
+            if k not in internal_options and k not in payload:
+                payload[k] = v
 
-
-    
-    def _prepare_vision_messages(self, prompt: str, chunk_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Prepare messages for vision-enabled models"""
-        messages = [
-            {"role": "system", "content": "You are an expert multimodal document analyst. Analyze both text and visual content."}
-        ]
-        
-        # Add text content
-        user_message = {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt}
-            ]
-        }
-        
-        # Add image if available
-        if "image_metadata" in chunk_data:
-            image_path = chunk_data["image_metadata"].get("file_path")
-            if image_path and os.path.exists(image_path):
-                try:
-                    with open(image_path, "rb") as image_file:
-                        image_data = base64.b64encode(image_file.read()).decode('utf-8')
-                    
-                    user_message["content"].append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_data}",
-                            "detail": "high"
-                        }
-                    })
-                except Exception as e:
-                    print(f"⚠️ Could not load image {image_path}: {e}")
-        
-        messages.append(user_message)
-        return messages
-    
-    def _process_api_response(self, response: Dict[str, Any], chunk_data: Dict[str, Any], analysis_type: str) -> Dict[str, Any]:
-        """Process and structure the API response"""
-        
         try:
-            content = response["choices"][0]["message"]["content"]
             
-            # Try to parse as JSON if possible
-            try:
-                analysis_result = json.loads(content)
-            except json.JSONDecodeError:
-                # If not JSON, create structured response
-                analysis_result = {
-                    "raw_analysis": content,
-                    "analysis_type": analysis_type
-                }
+            resp = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=timeout
+            )
             
-            # Add metadata
-            enhanced_result = {
-                "chunk_id": chunk_data["chunk_id"],
-                "original_chunk": chunk_data,
-                "external_analysis": analysis_result,
-                "api_provider": self.api_provider,
-                "analysis_type": analysis_type,
-                "tokens_used": response["usage"]["total_tokens"],
-                "model_used": response.get("model", "unknown"),
-                "timestamp": json.dumps({"timestamp": "now"}),  # You'd use actual timestamp
-                "confidence": "high" if response["usage"]["total_tokens"] > 100 else "medium"
+            if resp.status_code == 400:
+                try:
+                    body = resp.json()
+                    msg = body.get('error', {}).get('message', '')
+                    if 'Unsupported parameter' in msg and 'max_tokens' in msg:
+                        logger.debug("Retrying with 'max_completion_tokens'...")
+                        import copy
+                        adjusted = copy.deepcopy(payload)
+                        adjusted['max_completion_tokens'] = adjusted.pop('max_tokens')
+                        resp = requests.post(
+                            f"{self.base_url}/chat/completions",
+                            headers=headers,
+                            json=adjusted,
+                            timeout=timeout
+                        )
+                except Exception:
+                    pass
+
+            resp.raise_for_status()
+            return resp.json()
+
+        except Exception as e:
+            logger.error(f"OpenAI API request failed: {e}", exc_info=True)
+            raise ApiConnectionError(f"OpenAI API failure: {str(e)}")
+    
+    def _call_gemini_api(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Make API call to Google Gemini with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        
+
+        try:
+            prompt_parts = []
+            for msg in messages:
+                role = msg.get('role', '')
+                content = msg.get('content', '')
+                if role == 'system':
+                    prompt_parts.append(f"System: {content}")
+                elif role == 'user':
+                    prompt_parts.append(f"User: {content}")
+                elif role == 'assistant':
+                    prompt_parts.append(f"Assistant: {content}")
+            
+            full_prompt = "\n\n".join(prompt_parts)
+            
+            # Prepare generation config
+            gen_config = {
+                "max_output_tokens": max_tokens,
+                "temperature": temperature,
             }
             
-            return enhanced_result
+            # Add other options to gen_config (excluding internal ones)
+            internal_options = {'temperature', 'timeout', 'headers'}
+            for k, v in options.items():
+                if k not in internal_options:
+                    gen_config[k] = v
+
+            # Prepare generation config
+            from google import genai
+            response = self.genai_client.models.generate_content(
+                model=model,
+                contents=full_prompt,
+                config=genai.types.GenerateContentConfig(**gen_config)
+            )
+            
+            logger.debug(f"Gemini response candidates: {len(response.candidates)}")
+            if response.candidates:
+                candidate = response.candidates[0]
+                logger.debug(f"Finish reason: {candidate.finish_reason}")
+                if hasattr(candidate, 'safety_ratings'):
+                    logger.debug(f"Safety ratings: {candidate.safety_ratings}")
+            
+            # Extract text from response
+            response_text = response.text
+            logger.debug(f"Response length: {len(response_text)} characters")
+            
+            # Create normalized response structure matching OpenAI format
+            normalized = {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': response.usage_metadata.prompt_token_count if hasattr(response, 'usage_metadata') else 0,
+                    'completion_tokens': response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else 0,
+                    'total_tokens': response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else 0,
+                }
+            }
+            
+            return normalized
             
         except Exception as e:
-            return self._create_fallback_response(chunk_data, f"Response processing error: {e}")
+            logger.error(f"Gemini request failed: {e}", exc_info=True)
+            raise
     
-    def _create_fallback_response(self, chunk_data: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
-        """Create fallback response when API fails"""
-        return {
-            "chunk_id": chunk_data["chunk_id"],
-            "original_chunk": chunk_data,
-            "external_analysis": {
-                "error": error_msg,
-                "fallback": True,
-                "local_content": chunk_data.get("content", "")
-            },
-            "api_provider": self.api_provider,
-            "analysis_type": "error",
-            "confidence": "none"
-        }
-    
-    def analyze_multiple_chunks(self, chunks: List[Dict[str, Any]], analysis_type: str = "comprehensive") -> List[Dict[str, Any]]:
-        """
-        Analyze multiple chunks with external API
-        Includes rate limiting and error handling
-        """
-        results = []
+    def _call_grok_api(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Make API call to Grok (xAI) with specified model and parameters"""
         
-        print(f"🌐 Processing {len(chunks)} chunks with external API...")
-        
-        for i, chunk in enumerate(chunks):
-            try:
-                result = self.analyze_chunk_with_external_api(chunk, analysis_type)
-                results.append(result)
+        try:
+            # Initialize the Grok client
+            from xai_sdk import Client
+            client = Client(api_key=self.api_key, timeout=3600)
+            
+            # Create a chat session
+            chat = client.chat.create(model=model)
+            
+            # Add messages to the chat
+            for msg in messages:
+                role = msg.get('role', '')
+                content = msg.get('content', '')
                 
-                # Basic rate limiting (adjust based on API limits)
-                if i < len(chunks) - 1:  # Don't wait after last chunk
-                    import time
-                    time.sleep(1)  # 1 second between requests
-                    
-            except Exception as e:
-                print(f"❌ Failed to process chunk {chunk.get('chunk_id', i)}: {e}")
-                results.append(self._create_fallback_response(chunk, str(e)))
+                if role == 'system':
+                    from xai_sdk.chat import system
+                    chat.append(system(content))
+                elif role == 'user':
+                    from xai_sdk.chat import user
+                    chat.append(user(content))
+                elif role == 'assistant':
+                    from xai_sdk.chat import assistant
+                    chat.append(assistant(content))
+            
+            # Sample the response (note: xai-sdk doesn't directly expose temperature/max_tokens in sample())
+            # These parameters may need to be set differently depending on SDK version
+            response = chat.sample()
+            
+            # Extract text from response
+            response_text = response.content
+            logger.debug(f"Grok response length: {len(response_text)} characters")
+            
+            # Create normalized response structure matching OpenAI format
+            normalized = {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': 0,  # xai-sdk doesn't expose token counts in the same way
+                    'completion_tokens': 0,
+                    'total_tokens': 0,
+                }
+            }
+            
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"Request failed: {e}", exc_info=True)
+            raise
+    
+    def _call_anthropic_api(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Make API call to Anthropic Claude with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        timeout = options.get('timeout', 60)
         
-        print(f"✅ Completed external analysis of {len(results)} chunks")
-        return results
+        try:
+            # Anthropic requires system message to be separate from messages array
+            system_content = ""
+            user_messages = []
+            
+            for msg in messages:
+                role = msg.get('role', '')
+                content = msg.get('content', '')
+                
+                if role == 'system':
+                    system_content = content
+                elif role == 'user':
+                    user_messages.append({"role": "user", "content": content})
+                elif role == 'assistant':
+                    user_messages.append({"role": "assistant", "content": content})
+            
+            # Prepare base params
+            params = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system_content if system_content else None,
+                "messages": user_messages
+            }
+            
+            # Add extra options (excluding internal ones)
+            internal_options = {'temperature', 'timeout', 'headers'}
+            for k, v in options.items():
+                if k not in internal_options and k not in params:
+                    params[k] = v
 
-    def _call_openai_api(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, temperature: float) -> Dict[str, Any]:
-        """Make API call to OpenAI with specified model and parameters"""
+            # Call Anthropic API
+            response = self.anthropic_client.messages.create(**params)
+            
+            # Extract text from response
+            response_text = response.content[0].text
+            logger.debug(f"Claude response length: {len(response_text)} characters")
+            
+            # Create normalized response structure matching OpenAI format
+            normalized = {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': response.usage.input_tokens,
+                    'completion_tokens': response.usage.output_tokens,
+                    'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+                }
+            }
+            
+            return normalized
+            
+        except Exception as e:
+            logger.error(f"Anthropic request failed: {e}", exc_info=True)
+            raise
+    
+    # ========================================================================
+    # ASYNC VERSIONS OF API CALLS (Priority 6: Native Async Support)
+    # ========================================================================
+    
+    async def _call_openai_api_async(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Async version: Make API call to OpenAI with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        timeout = options.get('timeout', 60)
         
-        # Start OpenTelemetry span
-        with self.tracer.start_as_current_span("external_api_client.call_openai_api") as span:
-            span.set_attribute("llm.model_name", model)
-            span.set_attribute("llm.request.type", "chat")
-            try:
-                span.set_attribute("llm.input_messages", json.dumps(messages))
-            except Exception:
-                pass
-
+        try:
+            # Use AsyncOpenAI client
+            response = await self.async_openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout=timeout
+            )
+            
+            # Convert to normalized format
+            return {
+                'choices': [
+                    {'message': {'content': response.choices[0].message.content}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': response.usage.prompt_tokens if response.usage else 0,
+                    'completion_tokens': response.usage.completion_tokens if response.usage else 0,
+                    'total_tokens': response.usage.total_tokens if response.usage else 0,
+                }
+            }
+        except Exception as e:
+            logger.error(f"Async OpenAI request failed: {e}", exc_info=True)
+            raise ApiConnectionError(f"OpenAI API failure: {str(e)}")
+    
+    async def _call_gemini_api_async(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Async version: Make API call to Google Gemini with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        
+        try:
+            # Combine messages into single prompt
+            combined_prompt = "\n\n".join([
+                f"{msg.get('role', '').upper()}: {msg.get('content', '')}"
+                for msg in messages
+            ])
+            
+            # Use Gemini async client
+            from google import genai
+            response = await self.genai_client.aio.models.generate_content(
+                model=model,
+                contents=combined_prompt,
+                config=genai.types.GenerateContentConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            )
+            
+            logger.debug(f"Gemini async response candidates: {len(response.candidates)}")
+            response_text = response.text
+            logger.debug(f"Response length: {len(response_text)} characters")
+            
+            # Create normalized response structure
+            return {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': 0,
+                    'completion_tokens': 0,
+                    'total_tokens': 0,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Async Gemini request failed: {e}", exc_info=True)
+            raise
+    
+    async def _call_grok_api_async(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Async version: Make API call to xAI Grok (using httpx since xai-sdk doesn't have async)"""
+        temperature = options.get('temperature', 0.1)
+        timeout = options.get('timeout', 60)
+        
+        try:
+            # xai-sdk doesn't have async support, use httpx directly
+            url = "https://api.x.ai/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json"
             }
-
             payload = {
                 "model": model,
                 "messages": messages,
                 "max_tokens": max_tokens,
-                "temperature": temperature,
+                "temperature": temperature
             }
-
-            # Try chat/completions first (most common). If provider returns an error
-            # indicating the model requires a different endpoint, fall back to /responses.
-            try:
-                resp = requests.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                    timeout=60
-                )
-                if resp.status_code in (400, 404):
-                    # Try to surface helpful body
-                    try:
-                        body = resp.json()
-                    except Exception:
-                        body = resp.text
-                    print(f"⚠️ Chat completions endpoint returned {resp.status_code}: {body}")
-                resp.raise_for_status()
-                result = resp.json()
+            
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+            
+            # Normalize response
+            response_text = data["choices"][0]["message"]["content"]
+            logger.debug(f"Grok async response length: {len(response_text)} characters")
+            
+            return {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': data.get('usage', {
+                    'prompt_tokens': 0,
+                    'completion_tokens': 0,
+                    'total_tokens': 0,
+                })
+            }
+            
+        except Exception as e:
+            logger.error(f"Async Grok request failed: {e}", exc_info=True)
+            raise
+    
+    async def _call_anthropic_api_async(self, model: str, messages: List[Dict[str, Any]], max_tokens: int, **options) -> Dict[str, Any]:
+        """Async version: Make API call to Anthropic Claude with specified model and parameters"""
+        temperature = options.get('temperature', 0.1)
+        timeout = options.get('timeout', 60)
+        
+        try:
+            # Anthropic requires system message to be separate
+            system_content = ""
+            user_messages = []
+            
+            for msg in messages:
+                role = msg.get('role', '')
+                content = msg.get('content', '')
                 
-                # Record usage and output
-                if "usage" in result:
-                    span.set_attribute("llm.token_count.total", result["usage"].get("total_tokens", 0))
-                    span.set_attribute("llm.token_count.prompt", result["usage"].get("prompt_tokens", 0))
-                    span.set_attribute("llm.token_count.completion", result["usage"].get("completion_tokens", 0))
-                
-                try:
-                    span.set_attribute("llm.output_messages", json.dumps(result.get("choices", [])))
-                except Exception:
-                    pass
-                    
-                return result
-            except requests.exceptions.HTTPError as e:
-                # If model exists but chat/completions failed, try the Responses API
-                status = getattr(e.response, 'status_code', None)
-                body = None
-                try:
-                    body = e.response.json()
-                except Exception:
-                    try:
-                        body = e.response.text
-                    except Exception:
-                        body = str(e)
-                print(f"⚠️ chat/completions failed (status={status}): {body}")
-
-                # Some newer models (or provider configs) don't accept 'max_tokens' and
-                # require 'max_completion_tokens' instead. Try to detect that error and
-                # retry the same endpoint with the adjusted parameter name before falling back
-                # to /responses.
-                try:
-                    msg = None
-                    if isinstance(body, dict):
-                        msg = body.get('error', {}).get('message')
-                    elif isinstance(body, str):
-                        msg = body
-
-                    if msg and 'Unsupported parameter' in str(msg) and 'max_tokens' in str(msg):
-                        # Retry chat/completions with corrected parameter name
-                        import copy
-                        adjusted = copy.deepcopy(payload)
-                        if 'max_tokens' in adjusted:
-                            adjusted['max_completion_tokens'] = adjusted.pop('max_tokens')
-                        print("🔁 Retrying chat/completions with 'max_completion_tokens' instead of 'max_tokens'")
-                        try:
-                            resp_retry = requests.post(
-                                f"{self.base_url}/chat/completions",
-                                headers=headers,
-                                json=adjusted,
-                                timeout=60
-                            )
-                            resp_retry.raise_for_status()
-                            result = resp_retry.json()
-                            # Record usage and output
-                            if "usage" in result:
-                                span.set_attribute("llm.token_count.total", result["usage"].get("total_tokens", 0))
-                            try:
-                                span.set_attribute("llm.output_messages", json.dumps(result.get("choices", [])))
-                            except Exception:
-                                pass
-                            return result
-                        except Exception as retry_exc:
-                            print(f"⚠️ Retry with adjusted param failed: {retry_exc}")
-
-                except Exception:
-                    # Continue to /responses fallback if anything goes wrong here
-                    pass
-
-                # If Responses API looks supported (or if model is known to exist), try it
-                try:
-                    # Convert messages to a single input string for Responses API
-                    input_text = "\n".join([m.get('content', '') for m in messages if isinstance(m, dict)])
-                    # Responses API prefers 'max_output_tokens' as the token cap.
-                    # Avoid sending parameters that some models reject (like 'temperature')
-                    resp2_payload = {"model": model, "input": input_text, "max_output_tokens": int(max_tokens)}
-
-                    # Retry loop for /responses to handle transient read timeouts or server hiccups
-                    resp2 = None
-                    max_retries = 3
-                    backoff = 1.0
-                    for attempt in range(1, max_retries + 1):
-                        try:
-                            resp2 = requests.post(
-                                f"{self.base_url}/responses",
-                                headers=headers,
-                                json=resp2_payload,
-                                timeout=120
-                            )
-                            # Surface 4xx bodies for debugging
-                            if resp2.status_code in (400, 404):
-                                try:
-                                    print(f"⚠️ Responses endpoint returned {resp2.status_code}: {resp2.json()}")
-                                except Exception:
-                                    print(f"⚠️ Responses endpoint returned {resp2.status_code}: {resp2.text}")
-                            resp2.raise_for_status()
-                            break
-                        except requests.exceptions.ReadTimeout as rt:
-                            print(f"⚠️ /responses read timeout on attempt {attempt}: {rt}")
-                            if attempt == max_retries:
-                                raise
-                            time.sleep(backoff)
-                            backoff *= 2
-                            continue
-                        except requests.exceptions.HTTPError as http_err:
-                            # If we get an HTTPError, surface the body for debugging and do not retry for 4xx
-                            try:
-                                body = resp2.json()
-                            except Exception:
-                                body = resp2.text if resp2 is not None else str(http_err)
-                            print(f"⚠️ /responses HTTP error (attempt {attempt}): {body}")
-                            # If it's a 5xx, we can retry; for 4xx, break and raise
-                            if resp2 is not None and 500 <= resp2.status_code < 600 and attempt < max_retries:
-                                time.sleep(backoff)
-                                backoff *= 2
-                                continue
-                            raise
-
-                    # If we exited loop without a successful resp2, exception will be raised above
-                    data = resp2.json()
-                    # Try to extract text content from Responses API structure
-                    content_parts = []
-                    # 'output' may be a list of dicts with 'content'
-                    if isinstance(data.get('output'), list):
-                        for item in data.get('output', []):
-                            # item['content'] can be a list of dicts or a string
-                            c = item.get('content')
-                            if isinstance(c, list):
-                                for block in c:
-                                    if isinstance(block, dict) and 'text' in block:
-                                        content_parts.append(block['text'])
-                                    elif isinstance(block, str):
-                                        content_parts.append(block)
-                            elif isinstance(c, str):
-                                content_parts.append(c)
-
-                    # Fallback: check for 'choices' with 'text' or 'message'
-                    if not content_parts and isinstance(data.get('choices'), list):
-                        for ch in data.get('choices', []):
-                            if isinstance(ch.get('message'), dict):
-                                txt = ch['message'].get('content') or ch['message'].get('text')
-                                if txt:
-                                    content_parts.append(txt)
-                            elif 'text' in ch:
-                                content_parts.append(ch.get('text'))
-
-                    content_text = "\n".join([p for p in content_parts if p]) if content_parts else (data.get('output_text') or data.get('text') or '')
-
-                    normalized = {
-                        'choices': [
-                            {'message': {'content': content_text}}
-                        ],
-                        'model': model,
-                        'usage': data.get('usage', {})
-                    }
-                    
-                    # Record usage and output
-                    if "usage" in normalized:
-                        span.set_attribute("llm.token_count.total", normalized["usage"].get("total_tokens", 0))
-                    try:
-                        span.set_attribute("llm.output_messages", json.dumps(normalized.get("choices", [])))
-                    except Exception:
-                        pass
-                        
-                    return normalized
-                except Exception as e2:
-                    print(f"⚠️ Fallback to /responses also failed: {e2}")
-                    # If this was a read timeout, surface a clearer message
-                    if isinstance(e2, requests.exceptions.ReadTimeout):
-                        raise RuntimeError("Responses API request timed out. Consider increasing timeout or retrying later.") from e2
-                    # Re-raise the original error for upstream handling
-                    raise
-            except Exception as e:
-                print(f"⚠️ OpenAI request failed: {e}")
-                span.record_exception(e)
-                raise
-    
-def identify_relevant_chunks_for_external_analysis(chunk_metadata: List[Dict[str, Any]], 
-                                                 criteria: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-    """
-    Identify which chunks should be sent to external API based on criteria
-    
-    Args:
-        chunk_metadata: List of all chunks from RAG system
-        criteria: Selection criteria (complexity, visual content, etc.)
-    
-    Returns:
-        Filtered list of chunks for external analysis
-    """
-    if criteria is None:
-        criteria = {
-            "min_content_length": 200,
-            "has_visual_content": True,
-            "source_types": ["technical_manual", "scientific_paper"],
-            "max_chunks": 10
-        }
-    
-    relevant_chunks = []
-    
-    for chunk in chunk_metadata:
-        # Apply filters
-        content_length = len(chunk.get("content", ""))
-        has_visual = chunk.get("modality") == "visual" or "image_metadata" in chunk
-        source_type = chunk.get("source_type", "default")
-        
-        # Check criteria
-        if criteria.get("min_content_length", 0) > 0:
-            if content_length < criteria["min_content_length"]:
-                continue
-        
-        if criteria.get("has_visual_content", False):
-            if not has_visual:
-                continue
-        
-        if criteria.get("source_types"):
-            if source_type not in criteria["source_types"]:
-                continue
-        
-        relevant_chunks.append(chunk)
-        
-        # Limit number of chunks
-        if len(relevant_chunks) >= criteria.get("max_chunks", float('inf')):
-            break
-    
-    print(f"🎯 Selected {len(relevant_chunks)} chunks for external API analysis")
-    return relevant_chunks
-
-def save_external_analysis_results(results: List[Dict[str, Any]], filepath: str = "external_analysis_results.json"):
-    """Save external API analysis results to file"""
-    
-    analysis_summary = {
-        "total_chunks_analyzed": len(results),
-        "successful_analyses": len([r for r in results if not r["external_analysis"].get("error")]),
-        "failed_analyses": len([r for r in results if r["external_analysis"].get("error")]),
-        "api_provider": results[0]["api_provider"] if results else "unknown",
-        "results": results
-    }
-    
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(analysis_summary, f, indent=2, ensure_ascii=False)
-    
-    print(f"💾 External analysis results saved to {filepath}")
-    return analysis_summary
+                if role == 'system':
+                    system_content = content
+                elif role == 'user':
+                    user_messages.append({"role": "user", "content": content})
+                elif role == 'assistant':
+                    user_messages.append({"role": "assistant", "content": content})
+            
+            # Call async Anthropic API
+            response = await self.async_anthropic_client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_content if system_content else None,
+                messages=user_messages,
+                timeout=timeout
+            )
+            
+            # Extract text from response
+            response_text = response.content[0].text
+            logger.debug(f"Claude async response length: {len(response_text)} characters")
+            
+            # Create normalized response structure
+            return {
+                'choices': [
+                    {'message': {'content': response_text}}
+                ],
+                'model': model,
+                'usage': {
+                    'prompt_tokens': response.usage.input_tokens,
+                    'completion_tokens': response.usage.output_tokens,
+                    'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Async Anthropic request failed: {e}", exc_info=True)
+            raise

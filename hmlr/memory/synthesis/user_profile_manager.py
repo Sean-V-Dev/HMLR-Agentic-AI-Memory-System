@@ -13,9 +13,21 @@ class UserProfileManager:
     Handles thread-safe reading and writing of the glossary.
     """
     
-    def __init__(self, profile_path: str = "config/user_profile_lite.json"):
+    def __init__(self, profile_path: str = None):
+        # Default to package-relative path
+        if profile_path is None:
+            # Resolve from hmlr/config/ relative to this file
+            default_path = Path(__file__).parent.parent.parent / "config" / "user_profile_lite.json"
+            profile_path = str(default_path)
+        
         # Use absolute path to avoid CWD issues
         import os
+        
+        # Check if environment variable overrides the default path
+        env_profile_path = os.environ.get('USER_PROFILE_PATH')
+        if env_profile_path:
+            profile_path = env_profile_path
+        
         if not os.path.isabs(profile_path):
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             profile_path = os.path.join(base_dir, profile_path)
@@ -40,8 +52,18 @@ class UserProfileManager:
                 "constraints": []
             }
         }
-        with open(self.profile_path, 'w', encoding='utf-8') as f:
-            json.dump(default_data, f, indent=2)
+        # Use atomic write pattern
+        import os
+        temp_path = f"{self.profile_path}.tmp"
+        try:
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(default_data, f, indent=2)
+            os.replace(temp_path, self.profile_path)
+        except Exception as e:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            logger.error(f"Failed to create default profile: {e}", exc_info=True)
+            raise
 
     def get_user_profile_context(self, max_tokens: int = 300) -> str:
         """
@@ -208,9 +230,17 @@ class UserProfileManager:
                 
                 if changes_made:
                     data['last_updated'] = datetime.now().isoformat()
-                    # Write back
-                    with open(self.profile_path, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, indent=2)
+                    # Write back using atomic write pattern
+                    import os
+                    temp_path = f"{self.profile_path}.tmp"
+                    try:
+                        with open(temp_path, 'w', encoding='utf-8') as f:
+                            json.dump(data, f, indent=2)
+                        os.replace(temp_path, self.profile_path)
+                    except Exception as e:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                        raise e
                         
             except Exception as e:
-                logger.error(f"Error updating user profile: {e}")
+                logger.error(f"Error updating user profile: {e}", exc_info=True)

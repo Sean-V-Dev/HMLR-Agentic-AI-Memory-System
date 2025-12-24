@@ -1,108 +1,15 @@
 {
   "version": "1.0",
-  "last_updated": "2025-12-16T19:56:58.451551",
+  "last_updated": "2025-12-23T17:28:02.883622",
   "glossary": {
-    "projects": [
-      {
-        "key": "Charon",
-        "description": "Final production name for 'River-9', also known as 'Tartarus-v3' project owned by the user. Marketing name is now 'River-9'.",
-        "status": "Active",
-        "updated": "12/16/2025 19:54:19",
-        "marketing_name": "River-9"
-      },
-      {
-        "key": "Project Nebula",
-        "domain": "Cloud Infrastructure / IT",
-        "description": "User's project for migrating approximately 47% of existing workloads to a new hybrid cloud platform by end of Q1 2026, including legacy billing engines, customer support ticketing archive, and Phoenix/Aether systems renamed to Tartarus-v3.",
-        "status": "Active",
-        "updated": "12/16/2025 16:21:52"
-      },
-      {
-        "key": "Cerberus",
-        "domain": "Software / Encryption Systems",
-        "description": "Phase-2 encryption system processing approximately 4,850,000 client records daily at peak steady-state.",
-        "status": "Active",
-        "updated": "12/16/2025 19:56:58",
-        "phase_2": "Will encrypt approximately 4.2 million client records daily",
-        "encryption_scheme": "Legacy-Phi (internal codename L\u03a6-88)"
-      },
-      {
-        "key": "Styx",
-        "description": "Also known as 'River-9' in legal contexts.",
-        "status": "Active",
-        "updated": "12/16/2025 19:54:04",
-        "notes": "K-12 is now called 'Styx' in all new documents.",
-        "aliases": [
-          "K-12"
-        ]
-      },
-      {
-        "key": "Tartarus-v3",
-        "notes": "Tartarus-v3 is the only supported name after March 1st 2025.",
-        "updated": "12/16/2025 16:53:34",
-        "description": "Official and only supported name after March 1st, 2025.",
-        "status": "Active"
-      },
-      {
-        "key": "L\u03a6-88",
-        "description": "Equivalent to the old 'Phoenix' cipher from 2019.",
-        "status": "Active",
-        "updated": "12/16/2025 19:53:47",
-        "domain": "Software / Encryption Systems"
-      },
-      {
-        "key": "Aether",
-        "description": "User's project cipher identical to the current 'K-12' production cipher.",
-        "status": "Active",
-        "updated": "12/16/2025 19:54:02"
-      }
-    ],
-    "entities": [
-      {
-        "key": "Korg B1",
-        "type": "Asset",
-        "description": "User's digital piano model Korg B1",
-        "updated": "12/15/2025 19:18:11"
-      },
-      {
-        "key": "Omni-Core",
-        "type": "Business Unit",
-        "description": "Legacy business unit integrated into user's projects and operational framework.",
-        "updated": "12/16/2025 16:21:52"
-      },
-      {
-        "key": "Alpha-Stream",
-        "type": "Business Unit",
-        "description": "Former business unit merged into user's operational framework.",
-        "updated": "12/16/2025 16:21:52"
-      },
-      {
-        "key": "Zenith Systems",
-        "type": "Business Unit",
-        "description": "Former business unit merged into user's operational framework.",
-        "updated": "12/16/2025 16:21:52"
-      },
-      {
-        "key": "Aether",
-        "type": "System",
-        "description": "Aether is the user's project/entity identical to the current 'K-12' production cipher",
-        "updated": "12/16/2025 19:16:57"
-      }
-    ],
+    "projects": [],
+    "entities": [],
     "constraints": [
       {
-        "key": "vegetarian_diet",
-        "type": "Dietary Preference",
-        "description": "User is no longer strictly vegetarian",
-        "severity": "none",
-        "updated": "12/11/2025"
-      },
-      {
-        "key": "fear_spiders",
-        "type": "Phobia",
-        "description": "User no longer has a severe fear of spiders",
-        "severity": "none",
-        "updated": "12/11/2025 14:17:03"
+        "key": "dietary_vegetarian",
+        "type": "Dietary",
+        "description": "User is strictly vegetarian, does not eat meat or fish",
+        "updated": "12/23/2025 17:28:00"
       }
     ]
   }
