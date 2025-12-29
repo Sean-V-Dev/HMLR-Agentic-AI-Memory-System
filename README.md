@@ -132,9 +132,11 @@ flowchart TD
 ```
 **New Dossier System(v0.1.2) for Long-Term Memory Retrieval**
 
-When a user uses the gardener function (run_gardener.py), the system will transfer memories from short term to long term memory. Part of that process is taking the days current facts and storing them in dossiers. Dossiers persist across days and topics, and are specifically designed to help with long-term retrieval of critical information that may be buried in many days worth of memories.
+When a user uses the gardener function (run_gardener.py), the system will transfer memories from short-term to long-term memory. Part of that process is taking the day's current facts and storing them in dossiers. Dossiers persist across days and topics, and are specifically designed to help with long-term retrieval of critical information that may be buried in many days' worth of memories.
 
-When a new query comes in for any given day, the system will pull in dossiers *and* memories from long term storage. This allows for the system to recreate a causal chain of events from the past, into the present as if the information was always in hot memory.
+When a new query comes in for any given day, the system will pull in dossiers *and* memories from long-term storage. This allows for the system to recreate a causal chain of events from the past into the present as if the information was always in hot memory.
+
+-**Note** To pass memory from short-term memory(bridge blocks) to long-term memory (gardened memory and dossiers), you need to use the run_gardener.py script. Future updates will allow for this to happen automatically at the user's preference (at midnight, for example).
 
 **Old Memory Tests (Superseded by Hydra9 Hard Mode): These capabilities are still fully functional in HMLR**
 All results are verified using the RAGAS industry evaluation framework.
