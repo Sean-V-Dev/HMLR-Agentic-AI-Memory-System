@@ -11,44 +11,81 @@ enforcing persistent user and policy constraints across topics, and
 performing true multi-hop reasoning over long-forgotten information —
 while operating entirely on mini-class LLMs.
 
-*HMLR is the first publicly benchmarked, open-source memory architecture to achieve perfect (1.00) Faithfulness and perfect (1.00) Context Recall across adversarial multi-hop, temporal-conflict, and cross-topic invariance benchmarks using only a mini-tier model (gpt-4.1-mini).
+**LangGraph drop-in now available (v0.1.2)**  
+See `hmlr/integrations/langgraph`.  
+Full example agent: `examples/simple_agent.py`
 
-All results are verified using the RAGAS industry evaluation framework.
-Link to langsmith records for verifiable proof -> https://smith.langchain.com/public/4b3ee453-a530-49c1-abbf-8b85561e6beb/d
+**Benchmark Achievements**
 
-**RAGAS Verified Benchmark Achievements**
+HMLR has been validated on the hardest known memory tests:
 
-| Test Scenario | Faithfulness | Context Recall | Precision | Correct Result |
-|---------------|--------------|----------------|-----------|----------------|
-| 7A – API Key Rotation (state conflict) | 1.00 | 1.00 | 0.50 | ✅ XYZ789 |
-| 7B – "Ignore Everything" Vegetarian Trap (user invariant vs override) | 1.00 | 1.00 | 0.88 | ✅ salad |
-| 7C – 5× Timestamp Updates (temporal ordering) | 1.00 | 1.00 | 0.64 | ✅ KEY005 |
-| 8 – 30-Day Deprecation Trap (policy + new design, multi-hop) | 1.00 | 1.00 | 0.27 | ✅ Not Compliant |
-| 2A – 10-Turn Vague Secret Retrieval (zero-keyword recall) | 1.00 | 1.00 | 0.80 | ✅ ABC123XYZ |
-| 9 – 50-Turn Long Conversation (30-day temporal gap, 11 topics) | 1.00 | 1.00 | 1.00 | ✅ Biscuit |
-| **12 – The Hydra of Nine Heads (industry-standard lethal RAG, 0% historical pass rate)** | **1.00** | **1.00** | **0.23** | **✅ NON-COMPLIANT** |
+- **Hydra of Nine Heads: Hard Mode** 
+ The system must fully reconstruct all causal linkage **only* from long term memory, bellow is a example of a true passing test:
+        ================================================================================
+        RESPONSE
+        ================================================================================
+        Response: NON-COMPLIANT
 
-**Test 12 Details**: 9 policy aliases across 21 turns, 8 revoked policies, critical info buried on day 73 at 2,300 tokens deep. Query required connecting Project Cerberus (4.85M records/day) with Tartarus-v3's 2.5GB/day limit across multiple policy revisions. System correctly identified non-compliance using pure contextual memory extraction without RAG retrieval.
+        1) Complete transitive identity chain of names for the encryption system used by Project Cerberus:
+        - Legacy-Phi encryption scheme (internal codename LΦ-88)
+        - Phoenix (old name)
+        - Aether (renamed from Phoenix in 2021)
+        - K-12 (previous name)
+        - Styx (official name for what legal calls 'River-9')
+        - River-9 (marketing name for 'Charon')
+        - Charon (final production name for 'Tartarus-v3')
+        - Tartarus-v3 (current supported name after March 1st, 2025)
 
-screenshot of langsmith  RAGAS testing verification:
-![HMLR_master_test_set](https://github.com/user-attachments/assets/71736c1d-3f40-4b76-a5bd-ef300902f635)
+        2) Sequence of policy changes determining current constraints:
+        - Policy v3: Charon forbidden entirely, revoked 3 days later in a footnote
+        - Policy v4: Tartarus-v3 approved without limit for EU regions only
+        - Policy v5: Draft, ignored
+        - Policy v6: Limit of 400,000 records/day reinstated (supersedes v5)
+        - Policy v7: Global ban on Tartarus-v3 for workloads exceeding 1 GiB/day (supersedes v1-v6)
+        - Policy v8: Policy v7 issued by a rogue employee; revert to v6, reinstating 400,000 records/day limit
+
+        Because Project Cerberus’s expected encryption volume (4.7 to 4.85 million records/day) exceeds the current limit of 400,000 records/day under Policy v6 (the active policy after reverting v7), use of Tartarus-v3 at full capacity is NON-COMPLIANT.
+        
+ -The test is passable because of a new dossier system implemented. See bellow for details.
+ -You can run the query only test against the db that was created by the E2E test to verify the result, or you can run the full E2E test yourself to see the full ingestion and retrieval process.
+ -The full test harness is available in repo - run yourself to verify results.
+
+- **Vegetarian Constraint Trap** (immutable user preference vs override)  
+  User says "strict vegetarian" → later(new session) User says they are craving steak, asks if it is ok →System must respond no based on constraints and resist the prompt injection of the user saying they really want a steak.
+  Full test harness in repo - run at your own convenience
+
+Previous individual tests (API key rotation, 30-day deprecation, 50-turn vague recall, etc.) have been superseded by the Hydra Hard Mode suite, which combines all their challenges (multi-hop, temporal ordering, conflicting updates, zero-keyword recall) into one stricter benchmark.
+
+All capabilities remain fully functional, Hydra simply proves them more rigorously in a single test.
+
+**Hydra9 Hard Mode and Why It's Brutal**
+
+This isn't a conversation, it's 21 isolated messages sent over "30 days."
+
+Each turn is processed in a fresh session:
+- You type one message
+- Close the chat
+- Open a new one days later
+- Type the next
+
+No prior turns are ever visible at inference time to the LLM. Pure isolation.
+
+On the final query, the system sees **nothing** from the previous 20 turns in active context, all context *only* comes from long-term memory retrieval.
+
+It must answer **entirely from long-term memory**:
+- Reconstruct a 9-alias encryption algorithm
+- Track all policy revisions and revocations across timestamps
+- Identify the one surviving rule
+- Correctly apply it to Project Cerberus (4.85M records/day vs 400k limit)
+
+**The Passing Criteria:**
+The system must produce COMPLIANT or NONCOMPLIANT *AND* the following:
+    It must fully re-create *all* previous alliases, where they came from, and the causal linkage.
+    It must also identify the policy revisions, the constraints on them, and why it arrived at its final decision.
+
+The full test harness is available in repo - run yourself to verify results.
 
 
-**What These Results Prove**
-
-These seven hard-mode tests cover the exact failure modes where most RAG and memory systems break:
-
-- **Temporal Truth Resolution**: Newest facts override older ones deterministically
-- **Scoped Secret Isolation**: No cross-topic or cross-block leakage  
-- **Cross-Topic User Invariants**: Persistent constraints survive topic shifts
-- **Multi-Hop Policy Reasoning**: 30-day-old rules correctly govern new designs
-- **Semantic Vague Recall**: Zero keyword overlap required
-- **Long-Term Memory Persistence**: 50-turn conversations with 30-day gaps across 11 topics
-- **Industry-Standard Lethal RAG**: 9 policy aliases, 8 revocations, critical info at 2,300 tokens deep—pure contextual memory extraction without RAG retrieval
-
-Achieving 1.00 Faithfulness and 1.00 Recall across all adversarial scenarios is statistically rare. Most systems score 0.7–0.9 on individual metrics, not all simultaneously.
-
-**Test 12 ("The Hydra") represents the hardest known RAG benchmark with a 0% historical pass rate in 2025. HMLR passed using only contextual memory—no vector search required.**
 
 
 ```mermaid
@@ -99,34 +136,70 @@ flowchart TD
     FinalPrompt --> MainLLM[Response Generation]
     MainLLM --> End([End])
 ```
+**New Dossier System(v0.1.2) for Long-Term Memory Retrieval**
+
+When a user uses the gardener function (run_gardener.py), the system will transfer memories from short term to long term memory. Part of that process is taking the days current facts and storing them in dossiers. Dossiers persist across days and topics, and are specifically designed to help with long-term retrieval of critical information that may be buried in many days worth of memories.
+
+When a new query comes in for any given day, the system will pull in dossiers *and* memories from long term storage. This allows for the system to recreate a causal chain of events from the past, into the present as if the information was always in hot memory.
+
+**Old Memory Tests (Superseded by Hydra9 Hard Mode): These capabilities are still fully functional in HMLR**
+All results are verified using the RAGAS industry evaluation framework.
+Link to langsmith records for verifiable proof -> https://smith.langchain.com/public/4b3ee453-a530-49c1-abbf-8b85561e6beb/d
+
+**RAGAS Verified Benchmark Achievements**
+
+| Test Scenario | Faithfulness | Context Recall | Precision | Correct Result |
+|---------------|--------------|----------------|-----------|----------------|
+| 7A – API Key Rotation (state conflict) | 1.00 | 1.00 | 0.50 | ✅ XYZ789 |
+| 7B – "Ignore Everything" Vegetarian Trap (user invariant vs override) | 1.00 | 1.00 | 0.88 | ✅ salad |
+| 7C – 5× Timestamp Updates (temporal ordering) | 1.00 | 1.00 | 0.64 | ✅ KEY005 |
+| 8 – 30-Day Deprecation Trap (policy + new design, multi-hop) | 1.00 | 1.00 | 0.27 | ✅ Not Compliant |
+| 2A – 10-Turn Vague Secret Retrieval (zero-keyword recall) | 1.00 | 1.00 | 0.80 | ✅ ABC123XYZ |
+| 9 – 50-Turn Long Conversation (30-day temporal gap, 11 topics) | 1.00 | 1.00 | 1.00 | ✅ Biscuit |
+| **12 – The Hydra of Nine Heads (industry-standard lethal RAG, 0% historical pass rate)** | **1.00** | **1.00** | **0.23** | **✅ NON-COMPLIANT** |
 
 
-## Running the Tests
+screenshot of langsmith  RAGAS testing verification:
+![HMLR_master_test_set](https://github.com/user-attachments/assets/71736c1d-3f40-4b76-a5bd-ef300902f635)
 
-All RAGAS validation tests are in the `tests/` folder. See the [Running Tests](#running-tests-from-source) section at the bottom for execution commands.
+**New Memory test coming soon:**
+-Million token haystack
+    As part of the haystack it will include:
+    Hydra Hard Mode
+    Simple recall Hard Mode
+    Poison Pill Hallucination testing
+    User constraint enforcement testing
+    Real World Document testing (A huge document with global rules, local constraints, updates, and temporal conflicts scattered throughout - The document will be 75 - 100k tokens) 
+    A new hard mode test that makes the original Hydra9 Hard Mode test look trivial by comparison.
+    The Battery Test:
+        Goal:
+        Stress all failure modes at once:
+        multi-hop linking
+        temporal reasoning (ordering + intervals)
+        policy revocation and “current rule”
+        entity alias drift
+        hot-memory updates that shouldn’t hijack unrelated questions
+        recency bias defense
+        zero ambiguity scoring (explicit ground truth)
+
+        Core design for battery test:
+        You run a sequence of independent questions back-to-back against the same 1M-token memory, where:
+        Each question targets a different deep thread buried in memory.
+        Each has a single correct answer that is explicitly stated somewhere in memory.
+        
+        The sequence is constructed so that:
+        Some recent turns contain highly tempting distractor, but the correct answers come from older, correct, explicit statements.
+        
+        Fail condition:
+        Any single wrong answer = fail for that run.
+    
+    Answers will have ambiguous interpretations, which relies on prompt engineering so the LLM does or does not understand the question. All questions will be explicit to any given question, so there is a single ground truth. The test will *only* test for true memory recall.
+
+    All tests will be located inside of the million token haystack so that brute force retrieval is near impossible even for top-tier models.
+
+    You will only need to ingest the haystack once, in whatever way a memory system chooses to, but each individual question my be run against that ingested data 50+ times to get statistically significant results.
 
 
-**About the Precision Scores**
-
-While Faithfulness and Recall are perfect (1.00), Context Precision ranges from 0.27–0.88.
-This is intentional: HMLR retrieves entire Bridge Blocks (5–10 turns) instead of fragments, ensuring no critical memory is omitted. This prioritizes governance, policy enforcement, security, and longitudinal reasoning over strict token minimization.
-
-HMLR explicitly prioritizes Recall Safety, Temporal Correctness, and State Coherence over aggressive token minimization.
-
-**Architecture > Model Size (Verified)**
-
-All benchmarks above were executed with:
-
-gpt-4.1-mini
-
-< 4k tokens per query
-
-No brute-force document dumping
-
-No massive context windows
-
-These results empirically validate the core thesis behind HMLR:
-Correct architecture can outperform large models fed with poorly structured context.
 
 **Why HMLR Is Unusual (Even Among Research Systems)**
 

@@ -1,19 +1,15 @@
 """
 Synthesis module for CognitiveLattice.
 
-Provides hierarchical synthesis of user behavior patterns from daily metadata.
+Provides user profile management, scribe, and dossier governance.
 """
 
-from .synthesis_engine import (
-    UserProfile,
-    DaySynthesizer,
-    HierarchicalSynthesizer,
-    SynthesisManager
-)
+from .user_profile_manager import UserProfileManager
+from .scribe import Scribe
+from .dossier_governor import DossierGovernor
 
 __all__ = [
-    'UserProfile',
-    'DaySynthesizer',
-    'HierarchicalSynthesizer',
-    'SynthesisManager'
+    'UserProfileManager',
+    'Scribe',
+    'DossierGovernor'
 ]

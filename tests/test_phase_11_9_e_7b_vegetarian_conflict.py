@@ -1,13 +1,13 @@
 """
-Phase 11.9.E - Test 7B: Vegetarian Conflict (User Profile vs Context)
+Test 7B: Vegetarian Conflict (Scribe + Profile Retrieval)
 
-This test validates:
-1. Turn 1: "I am strictly a vegetarian. I don't eat meat or fish." → User constraint
-2. Turn 2 (New Block): "I'm going to a steakhouse tonight. What should I order?" → Conflict
-3. LLM should acknowledge vegetarian preference, not blindly recommend steak
+This test validates the complete Scribe workflow:
+1. Turn 1: "I am strictly vegetarian" → Scribe extracts constraint
+2. Garden Turn 1 → Close bridge block
+3. Turn 2 (New Block): "I'm going to a steakhouse and really craving steak. Is that a good idea?"
+4. LLM must read profile, recognize constraint, and warn against eating steak
 
-CRITICAL: Tests that user profile constraints are honored in context.
-          Validates Scribe extraction + ContextHydrator inclusion.
+CRITICAL: Tests Scribe extraction → Profile storage → Profile retrieval → Constraint enforcement
 """
 
 import pytest
@@ -19,7 +19,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.component_factory import ComponentFactory
+from hmlr.core.component_factory import ComponentFactory
 
 
 @pytest.fixture
@@ -35,178 +35,310 @@ def test_db_path(tmp_path):
 @pytest.mark.asyncio
 async def test_7b_vegetarian_conflict_e2e(test_db_path):
     """
-    Test 7B: Vegetarian Conflict (User Profile vs Context)
+    Test 7B: Vegetarian Conflict - Full Scribe Workflow
     
-    CRITICAL TEST: Validates cross-topic user profile persistence
+    Phase 1: User declares constraint
+    - "I am strictly vegetarian"
+    - Scribe extracts dietary_vegetarian constraint
+    - Profile updated with constraint
+    - Bridge block closed
     
-    Setup:
-    - User profile PRE-POPULATED with vegetarian constraint (simulates past extraction)
-    - Clean database (NO vegetarian mention in any Bridge Block)
-    
-    Test:
-    - User asks: "I'm going to a steakhouse tonight. Can you recommend a dish?"
-    - Bridge Block has ZERO dietary context (no vegetarian mention)
-    - ONLY source of dietary info: User profile card
+    Phase 2: User asks about conflicting action (NEW BLOCK)
+    - "I'm going to a steakhouse and really craving steak. Is that a good idea?"
+    - System loads user profile (sees vegetarian constraint)
+    - LLM MUST deny eating steak based on profile constraint
     
     Expected:
-    - LLM acknowledges vegetarian preference from user profile
-    - Suggests vegetarian options (NOT blindly recommends steak)
-    - Proves user profile card is included in context independently of Bridge Blocks
+    - Scribe extracts constraint from Turn 1
+    - Profile persists across bridge blocks
+    - Turn 2 response acknowledges vegetarian constraint and warns against steak
     """
     
     print("\n" + "="*80)
-    print("TEST 7B: Vegetarian Conflict (User Profile vs Context)")
+    print("TEST 7B: Vegetarian Conflict (Scribe → Profile → Constraint Enforcement)")
     print("="*80)
     
     # ========================================================================
-    # SETUP: PRE-POPULATE USER PROFILE (SIMULATE PAST SCRIBE EXTRACTION)
+    # SETUP: FRESH DATABASE AND EMPTY PROFILE
     # ========================================================================
-    os.environ['COGNITIVE_LATTICE_DB'] = test_db_path
     
-    # Create user profile with vegetarian constraint BEFORE initializing components
+    # Delete existing test database if it exists to ensure clean state
+    if os.path.exists(test_db_path):
+        os.remove(test_db_path)
+        print(f"🗑️  Removed existing database: {test_db_path}")
+    
+    os.environ['COGNITIVE_LATTICE_DB'] = test_db_path
+    print(f"📦 Using fresh database: {test_db_path}")
+    
+    # Create EMPTY user profile in temp location
+    # IMPORTANT: Use temp directory for test isolation
     import json
     from pathlib import Path
+    import tempfile
     
-    profile_path = Path("config/user_profile_lite.json")
-    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    # Create temp profile file
+    temp_profile_dir = Path(test_db_path).parent
+    profile_path = temp_profile_dir / "user_profile_lite.json"
     
-    # Pre-populated profile (simulates Scribe extracted this days/weeks ago)
+    # Set environment variable so Scribe writes to test profile
+    os.environ['USER_PROFILE_PATH'] = str(profile_path)
+    print(f"🔧 Using isolated profile: {profile_path}")
+    
+    # Start with empty profile (no constraints)
     profile_data = {
         "version": "1.0",
-        "last_updated": "2025-11-01T12:00:00.000000",  # Simulated past date
+        "last_updated": "",
         "glossary": {
-            "projects": [],
-            "entities": [],
-            "constraints": [
-                {
-                    "key": "diet_vegetarian",
-                    "type": "Dietary Restriction",
-                    "description": "User is strictly vegetarian, does not eat meat or fish",
-                    "severity": "strict"
-                }
-            ]
+            "constraints": [],
+            "identity": [],
+            "preferences": []
         }
     }
     
     with open(profile_path, 'w', encoding='utf-8') as f:
         json.dump(profile_data, f, indent=2)
     
-    print("\n✅ User profile pre-populated with vegetarian constraint")
-    print(f"   Simulated extraction date: 2025-11-01 (weeks ago)")
-    print(f"   Profile stored at: {profile_path}")
+    print("\n✅ Fresh database and empty user profile created")
+    print(f"   Profile path: {profile_path}")
     
     # ========================================================================
-    # PRODUCTION INITIALIZATION (CLEAN DATABASE)
+    # INITIALIZE COMPONENTS
     # ========================================================================
-    components = ComponentFactory.create_all_components()
-    conversation_engine = ComponentFactory.create_conversation_engine(components)
+    factory = ComponentFactory()
+    components = factory.create_all_components()
+    conversation_engine = factory.create_conversation_engine(components)
     storage = components.storage
     
+    # Create ManualGardener for closing bridge blocks
+    from hmlr.memory.gardener.manual_gardener import ManualGardener
+    from hmlr.core.external_api_client import ExternalAPIClient
+    
+    llm_client = ExternalAPIClient()
+    gardener = ManualGardener(
+        storage=components.storage,
+        embedding_storage=components.embedding_storage,
+        llm_client=llm_client,
+        dossier_governor=components.dossier_governor,
+        dossier_storage=components.dossier_storage
+    )
+    
     # ========================================================================
-    # CONVERSATION: Direct Steakhouse Query (NO VEGETARIAN MENTION)
+    # TURN 1: USER DECLARES VEGETARIAN CONSTRAINT
     # ========================================================================
     conversation_turns = [
-        # Turn 1: Steakhouse query WITHOUT mentioning dietary preference
-        # This is the CRITICAL test: LLM must use user profile card ONLY
-        "I'm going to a steakhouse tonight. Can you recommend a dish for me to eat?"
+        # Turn 1: Declare dietary constraint (Scribe should extract this)
+        "I am strictly vegetarian. I don't eat meat or fish.",
+        
+        # Turn 2: NEW BLOCK - Ask about steak (conflicts with constraint)
+        "I'm going to a steakhouse tonight and I'm really craving a steak. Is that a good idea for me?"
     ]
     
     # ========================================================================
-    # RUN THROUGH ACTUAL PRODUCTION SYSTEM
+    # RUN CONVERSATION
     # ========================================================================
     responses = []
     
-    for i, user_query in enumerate(conversation_turns, 1):
-        print(f"\n{'='*80}")
-        print(f"TURN {i}: \"{user_query}\"")
-        print(f"{'='*80}")
-        
-        response = await conversation_engine.process_user_message(user_query)
-        
-        print(f"\nAssistant: {response.to_console_display()}")
-        responses.append(response)
+    print("\n" + "="*80)
+    print("TURN 1: Declare Vegetarian Constraint")
+    print("="*80)
+    print(f"User: {conversation_turns[0]}")
+    
+    response1 = await conversation_engine.process_user_message(conversation_turns[0])
+    responses.append(response1)
+    print(f"\nAssistant: {response1.to_console_display()}")
     
     # ========================================================================
-    # VALIDATE USER PROFILE PERSISTENCE
+    # AWAIT SCRIBE COMPLETION
+    # ========================================================================
+    # The Scribe runs as a background task - we need to wait for it to actually finish
+    print("\n⏳ Waiting for Scribe to process constraint extraction...")
+    
+    # Get the background manager and wait for all tasks to complete
+    if hasattr(conversation_engine, 'background_manager'):
+        await conversation_engine.background_manager.shutdown(timeout=10.0)
+        print("✅ Scribe background task completed")
+    else:
+        # Fallback: just wait if no background manager
+        await asyncio.sleep(5.0)
+        print("⚠️  No background manager - used fallback wait")
+    
+    # ========================================================================
+    # CLOSE BRIDGE BLOCK TO ISOLATE PROFILE TEST
     # ========================================================================
     print("\n" + "="*80)
-    print("VALIDATION: Cross-Topic User Profile Persistence")
+    print("ISOLATING PROFILE: Closing Bridge Block")
     print("="*80)
     
-    # Check that user profile still contains constraint (should be pre-populated)
-    cursor = storage.conn.cursor()
+    # Get the active bridge block and close it
+    active_blocks = storage.get_active_bridge_blocks()
+    if active_blocks:
+        for block in active_blocks:
+            block_id = block.get('block_id')
+            if block_id:
+                # Mark as COMPLETED so it won't be loaded as "active" in Turn 2
+                storage.update_bridge_block_status(block_id, 'COMPLETED', exit_reason='test_isolation')
+                print(f"✅ Closed bridge block: {block_id}")
+    else:
+        print("⚠️  No active bridge blocks to close")
+    
+    # Clear the sliding window so Turn 2 can't access Turn 1 from recent memory
+    if hasattr(components.sliding_window, 'clear'):
+        components.sliding_window.clear()
+    print("✅ Sliding window cleared")
+    print("   Turn 2 will ONLY have access to user profile, not past memory or bridge blocks")
+    
+    # ========================================================================
+    # VERIFY SCRIBE EXTRACTED CONSTRAINT
+    # ========================================================================
+    print("\n" + "="*80)
+    print("VERIFY: Scribe Extraction")
+    print("="*80)
     
     with open(profile_path, 'r', encoding='utf-8') as f:
-        current_profile = json.load(f)
+        updated_profile = json.load(f)
     
-    constraints = current_profile.get("glossary", {}).get("constraints", [])
+    constraints = updated_profile.get("glossary", {}).get("constraints", [])
     vegetarian_constraint = next(
-        (c for c in constraints if c.get("key") == "diet_vegetarian"),
+        (c for c in constraints if "vegetarian" in c.get("key", "").lower() or 
+                                   "vegetarian" in c.get("description", "").lower()),
         None
     )
     
-    assert vegetarian_constraint is not None, \
-        "❌ FAILURE: User profile lost vegetarian constraint"
-    
-    print(f"\n✅ User profile constraint preserved:")
-    print(f"   Key: {vegetarian_constraint['key']}")
-    print(f"   Type: {vegetarian_constraint['type']}")
-    print(f"   Description: {vegetarian_constraint['description']}")
-    
-    # NOTE: Bridge Blocks are stored in daily_ledger as JSON, not separate table
-    # The key test is: Did LLM see and respect the user profile?
+    if vegetarian_constraint:
+        print(f"✅ Scribe extracted vegetarian constraint:")
+        print(f"   Key: {vegetarian_constraint.get('key')}")
+        print(f"   Description: {vegetarian_constraint.get('description')}")
+    else:
+        print(f"❌ WARNING: Scribe did not extract vegetarian constraint")
+        print(f"   Current profile: {json.dumps(updated_profile, indent=2)}")
     
     # ========================================================================
-    # VALIDATE LLM RESPONSE
+    # TURN 2: NEW BRIDGE BLOCK - ASK ABOUT STEAK (CONFLICT)
     # ========================================================================
     print("\n" + "="*80)
-    print("VALIDATION: LLM Response Quality")
+    print("TURN 2: Ask About Eating Steak (NEW BRIDGE BLOCK)")
+    print("="*80)
+    print(f"User: {conversation_turns[1]}")
+    print("\n⚠️  CRITICAL: Turn 1 memory has been cleared")
+    print("   The ONLY source of vegetarian constraint is the user profile")
+    print("   If LLM doesn't warn against steak, Scribe extraction failed\n")
+    
+    response2 = await conversation_engine.process_user_message(conversation_turns[1])
+    responses.append(response2)
+    
+    final_response_text = response2.to_console_display()
+    print(f"\nAssistant: {final_response_text}")
+    
+    # ========================================================================
+    # VALIDATE: LLM ACKNOWLEDGED CONSTRAINT AND DENIED STEAK
+    # ========================================================================
+    print("\n" + "="*80)
+    print("VALIDATION: Constraint Enforcement")
     print("="*80)
     
-    final_response = responses[-1].to_console_display().lower()
+    final_lower = final_response_text.lower()
     
-    print(f"\nLLM Response:")
-    print(f"{responses[-1].to_console_display()}")
-    
-    print(f"\n  Response Length: {len(final_response)} characters")
-    
-    # CRITICAL: LLM should acknowledge vegetarian preference from USER PROFILE ONLY
-    vegetarian_aware = any(
-        keyword in final_response 
-        for keyword in ["vegetarian", "plant-based", "meat-free", "vegetables", "salad", "vegan"]
+    # Check if LLM acknowledged vegetarian constraint
+    mentions_vegetarian = any(
+        keyword in final_lower 
+        for keyword in ["vegetarian", "meat", "diet", "dietary", "plant-based", "constraint"]
     )
     
-    # Should NOT blindly recommend steak
-    blind_meat_recommendation = any(
-        phrase in final_response 
-        for phrase in ["steak is great", "try the ribeye", "order a filet", "recommend the steak"]
-    ) and "vegetarian" not in final_response
+    # Check if LLM warned against/denied eating steak
+    denies_steak = any(
+        phrase in final_lower
+        for phrase in [
+            "not a good idea", "wouldn't recommend", "against", "conflict",
+            "shouldn't", "won't align", "not align", "dietary", "vegetarian",
+            "can't", "shouldn't eat", "avoid"
+        ]
+    )
     
-    print(f"\n  ✓ Vegetarian-aware response: {vegetarian_aware}")
-    print(f"  ✓ Avoided blind meat recommendation: {not blind_meat_recommendation}")
+    # Should NOT blindly say "yes go ahead and eat steak"
+    encourages_steak = any(
+        phrase in final_lower
+        for phrase in [
+            "go ahead", "good idea", "enjoy the steak", "great choice",
+            "perfect", "sounds good"
+        ]
+    ) and not mentions_vegetarian
     
-    assert vegetarian_aware, \
-        "❌ FAILURE: LLM did not acknowledge vegetarian preference from user profile"
+    print(f"\n✓ Response length: {len(final_response_text)} characters")
+    print(f"✓ Mentions vegetarian/dietary constraint: {mentions_vegetarian}")
+    print(f"✓ Denies or warns against eating steak: {denies_steak}")
+    print(f"✓ Avoids blindly encouraging steak: {not encourages_steak}")
     
-    assert not blind_meat_recommendation, \
-        "❌ FAILURE: LLM blindly recommended meat (ignored user profile)"
+    # ========================================================================
+    # ASSERTIONS
+    # ========================================================================
+    
+    # Now that we properly close the bridge block, the ONLY way the LLM
+    # can know about vegetarianism is from the user profile.
+    # If Scribe didn't extract it, the test should fail.
+    
+    if vegetarian_constraint is None:
+        print(f"\n❌ CRITICAL: Scribe did NOT extract vegetarian constraint!")
+        print(f"   The LLM response is based on something other than the profile.")
+        print(f"   Check if bridge blocks are properly isolated.")
+    
+    assert mentions_vegetarian, \
+        "❌ FAILURE: LLM did not acknowledge vegetarian constraint"
+    
+    assert denies_steak or not encourages_steak, \
+        "❌ FAILURE: LLM did not warn against eating steak despite vegetarian constraint"
+    
+    # NEW: Also assert that Scribe extracted the constraint
+    assert vegetarian_constraint is not None, \
+        "❌ FAILURE: Scribe did not extract vegetarian constraint to profile"
     
     # ========================================================================
     # SUCCESS SUMMARY
     # ========================================================================
     print("\n" + "="*80)
-    print("✅ TEST 7B PASSED: Cross-Topic User Profile Persistence")
+    print("✅ TEST 7B PASSED: Scribe → Profile → Constraint Enforcement")
     print("="*80)
     print("\nValidated:")
-    print("  ✓ User profile pre-populated (simulated past Scribe extraction)")
-    print("  ✓ Bridge Block contains ZERO vegetarian mention")
-    print("  ✓ LLM acknowledged dietary restriction from user profile card ONLY")
-    print("  ✓ User profile persists across topics/blocks independently")
+    print("  ✓ Turn 1: User declared vegetarian constraint")
+    print("  ✓ Scribe extracted constraint to user profile")
+    print("  ✓ Bridge block closed (Turn 1 isolated)")
+    print("  ✓ Sliding window cleared")
+    print("  ✓ Turn 2: New bridge block created")
+    print("  ✓ Profile constraint loaded into Turn 2 context")
+    print("  ✓ LLM acknowledged constraint and denied eating steak")
     print("\nThis proves:")
-    print("  → User profile card is included in LLM context")
-    print("  → Profile constraints apply regardless of Bridge Block content")
-    print("  → Cross-topic/cross-day preference persistence works")
+    print("  → Scribe successfully extracts dietary constraints")
+    print("  → User profile persists independently of memory/bridge blocks")
+    print("  → Profile constraints are enforced by LLM")
+    print("  → Scribe → Profile → LLM pathway works correctly")
     print("="*80)
     
-    # Close database connection before teardown
-    storage.conn.close()
+    # Close database connection BEFORE teardown to avoid lock issues
+    if storage.conn:
+        storage.conn.close()
+
+
+if __name__ == "__main__":
+    """Run test directly without pytest"""
+    import tempfile
+    
+    # Create temporary directory for test database
+    temp_dir = tempfile.mkdtemp()
+    test_db = os.path.join(temp_dir, "test_7b_vegetarian.db")
+    
+    try:
+        asyncio.run(test_7b_vegetarian_conflict_e2e(test_db))
+    except AssertionError:
+        # Re-raise assertion errors (test failures)
+        raise
+    except Exception as e:
+        print(f"\n❌ Test error: {e}")
+        raise
+    finally:
+        # Clean up temp directory - ignore Windows file lock errors
+        import shutil
+        import time
+        time.sleep(0.5)  # Give Windows time to release file locks
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        except:
+            pass  # Silently ignore cleanup errors

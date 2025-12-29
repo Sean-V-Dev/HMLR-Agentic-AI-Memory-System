@@ -9,13 +9,18 @@ import numpy as np
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import pickle
+from hmlr.core.model_config import model_config
 
 try:
     from sentence_transformers import SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    print("⚠️  sentence-transformers not installed. Install with: pip install sentence-transformers")
+    print("sentence-transformers not installed. Install with: pip install sentence-transformers")
+
+
+# Global model cache to avoid reloading models
+_MODEL_CACHE = {}
 
 
 class EmbeddingManager:
@@ -23,24 +28,55 @@ class EmbeddingManager:
     Manages vector embeddings for conversation turns.
     """
     
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self, model_name: str = None):
         """
         Initialize embedding manager.
         
         Args:
-            model_name: SentenceTransformer model name
+            model_name: SentenceTransformer model name (defaults to centralized config)
         """
-        self.model_name = model_name
-        self.dimension = 384  # all-MiniLM-L6-v2 output dimension
+        self.model_name = model_name or model_config.EMBEDDING_MODEL_NAME
+        self.dimension = model_config.EMBEDDING_DIMENSION
         
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError(
                 "sentence-transformers required. Install with: pip install sentence-transformers"
             )
         
-        print(f"📦 Loading embedding model: {model_name}...")
-        self.model = SentenceTransformer(model_name)
-        print(f"✅ Model loaded: {model_name} ({self.dimension}D)")
+        # Check if model already loaded in cache
+        if self.model_name in _MODEL_CACHE:
+            cached = _MODEL_CACHE[self.model_name]
+            self.model = cached['model']
+            self.device = cached['device']
+            return
+        
+        # Load model for first time
+        import torch
+        device = 'cpu'
+        gpu_info = "CPU only"
+        
+        try:
+            if torch.cuda.is_available():
+                device = 'cuda'
+                gpu_name = torch.cuda.get_device_name(0)
+                gpu_info = f"GPU ({gpu_name})"
+                print(f" GPU detected: {gpu_name}", flush=True)
+            else:
+                print(f"⚠️  No GPU detected - using CPU", flush=True)
+                print(f"   To enable GPU: pip install torch --index-url https://download.pytorch.org/whl/cu121", flush=True)
+        except Exception as e:
+            print(f"⚠️  GPU check failed: {e} - using CPU", flush=True)
+        
+        print(f"Loading embedding model: {self.model_name} on {gpu_info}...", flush=True)
+        self.model = SentenceTransformer(self.model_name, device=device, local_files_only=True)
+        self.device = device
+        print(f"✓ Model loaded: {self.model_name} ({self.dimension}D) on {device.upper()}", flush=True)
+        
+        # Cache for future instances
+        _MODEL_CACHE[self.model_name] = {
+            'model': self.model,
+            'device': self.device
+        }
     
     def encode(self, text: str) -> np.ndarray:
         """
@@ -129,6 +165,10 @@ class EmbeddingManager:
         results = []
         
         for embedding_id, stored_vec, text in stored_embeddings:
+            # Skip embeddings with mismatched dimensions (from old models)
+            if stored_vec.shape[0] != query_embedding.shape[0]:
+                continue
+                
             similarity = self.cosine_similarity(query_embedding, stored_vec)
             
             if similarity >= min_similarity:
@@ -231,9 +271,10 @@ class EmbeddingStorage:
         return results
     
     def search_similar(self, query: str, top_k: int = 10, 
-                      min_similarity: float = 0.5) -> List[Dict]:
+                      min_similarity: float = 0.55) -> List[Dict]:
         """
         Search for similar conversations using vector similarity.
+        ONLY searches gardened_memory (long-term storage), not embeddings table (query vectors).
         
         Args:
             query: Search query
@@ -241,47 +282,33 @@ class EmbeddingStorage:
             min_similarity: Minimum similarity threshold
             
         Returns:
-            List of results with turn_id, similarity, text
+            List of results with turn_id (chunk_id), similarity, text
         """
         # Encode query
         query_embedding = self.embedding_manager.encode(query)
         
-        # Load all embeddings
-        stored_embeddings = self.get_all_embeddings()
-        
-        # Also load embeddings from gardened_memory (if table exists)
+        # ONLY load embeddings from gardened_memory (long-term searchable content)
+        # The embeddings table contains query vectors, not searchable content
         gardened_embeddings = self._get_gardened_embeddings()
         
-        # Combine both sources
-        all_embeddings = stored_embeddings + gardened_embeddings
+        if not gardened_embeddings:
+            return []
         
-        # Find similar (without turn_id for now)
+        # Find similar
         similar = self.embedding_manager.find_similar(
             query_embedding,
-            [(e[0], e[1], e[2]) for e in all_embeddings],
-            top_k=top_k * 3,  # Get more candidates for de-duplication
+            [(e[0], e[1], e[2]) for e in gardened_embeddings],
+            top_k=top_k,
             min_similarity=min_similarity
         )
         
-        # Add turn_id to results
-        embedding_to_turn = {e[0]: e[3] for e in all_embeddings}
+        # Add chunk_id to results (stored as turn_id for backward compatibility)
+        embedding_to_chunk = {e[0]: e[3] for e in gardened_embeddings}
         for result in similar:
-            result['turn_id'] = embedding_to_turn[result['embedding_id']]
-            result['query_vector'] = query_embedding  # Attach query vector for visualization
+            result['turn_id'] = embedding_to_chunk[result['embedding_id']]  # This is actually chunk_id
+            result['query_vector'] = query_embedding
         
-        # De-duplicate by turn_id (keep best chunk per turn)
-        turn_best = {}
-        for result in similar:
-            turn_id = result['turn_id']
-            if turn_id not in turn_best or result['similarity'] > turn_best[turn_id]['similarity']:
-                turn_best[turn_id] = result
-        
-        # Return top-k de-duplicated results
-        final_results = sorted(turn_best.values(), 
-                              key=lambda x: x['similarity'], 
-                              reverse=True)[:top_k]
-        
-        return final_results
+        return similar
     
     def _get_gardened_embeddings(self) -> List[Tuple[str, np.ndarray, str, str]]:
         """
@@ -324,14 +351,14 @@ class EmbeddingStorage:
 
 
 if __name__ == "__main__":
-    print("🧪 Testing EmbeddingManager...\n")
+    print(" Testing EmbeddingManager...\n")
     
     # Test encoding
     manager = EmbeddingManager()
     
     text = "Python is a programming language"
     embedding = manager.encode(text)
-    print(f"✅ Encoded text: {text}")
+    print(f" Encoded text: {text}")
     print(f"   Embedding shape: {embedding.shape}")
     print(f"   First 5 values: {embedding[:5]}\n")
     

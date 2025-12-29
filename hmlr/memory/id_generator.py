@@ -12,8 +12,7 @@ Examples:
     day_20251006                      # Day node (simple date)
     sess_20251006_140000_xyz789       # Session
 
-Author: CognitiveLattice Team
-Created: 2025-10-10
+
 """
 
 import hashlib
@@ -25,6 +24,23 @@ from typing import Optional, Dict, Tuple, Literal
 # ============================================================================
 # ID GENERATION FUNCTIONS
 # ============================================================================
+
+def generate_id(prefix: str) -> str:
+    """
+    Generate a unique ID with the given prefix.
+    
+    Format: {prefix}_{timestamp}_{hash}
+    Example: dos_20251006_143022_abc123
+    
+    Args:
+        prefix: ID prefix (e.g., "dos", "fact", "prov")
+        
+    Returns:
+        Unique ID string
+    """
+    ts = _format_timestamp()
+    hash_part = _generate_hash()
+    return f"{prefix}_{ts}_{hash_part}"
 
 def _generate_hash(length: int = 6) -> str:
     """

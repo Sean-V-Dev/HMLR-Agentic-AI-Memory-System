@@ -254,6 +254,11 @@ CognitiveLattice_E2E_Acceptance_Suite_Tests/
 #docs in the memory folder
 memory/docs/*
 
+# Archived/deprecated code (moved to junk_drawer)
+junk_drawer/_archived_memory/
+junk_drawer/_archived_core/
+junk_drawer/_archived_tools/
+
 # ===================================================================
 # HMLR PACKAGE-SPECIFIC (Added during packaging refactor)
 # ===================================================================
@@ -290,3 +295,5 @@ test_output/
 
 # Temporary packaging files
 packaging_plan.md
+
+longmemeval_s_cleaned.json

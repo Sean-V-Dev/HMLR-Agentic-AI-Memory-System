@@ -4,8 +4,6 @@
 
 **HMLR has ONLY been tested with `gpt-4.1-mini`.**
 
-Using any other model is **NOT supported** and **WILL LIKELY FAIL**.
-
 ## Why Only GPT-4.1-mini?
 
 HMLR's architecture was designed, optimized, and benchmarked exclusively with `gpt-4.1-mini`. The system makes specific assumptions about:

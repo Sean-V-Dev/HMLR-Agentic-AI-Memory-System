@@ -146,21 +146,21 @@ client_personal = HMLRClient(api_key="...", db_path="personal_memory.db")
 
 ### 1. Use Persistent Database Paths
 ```python
-# ✅ Good - consistent path
+#  Good - consistent path
 client = HMLRClient(api_key="...", db_path="./data/memory.db")
 
-# ❌ Bad - temporary or random paths
+#  Bad - temporary or random paths
 client = HMLRClient(api_key="...", db_path=f"temp_{random()}.db")
 ```
 
 ### 2. Reuse Client Instances
 ```python
-# ✅ Good - reuse client
+#  Good - reuse client
 client = HMLRClient(api_key="...", db_path="memory.db")
 for message in messages:
     await client.chat(message)
 
-# ❌ Bad - creating new client each time
+#  Bad - creating new client each time
 for message in messages:
     client = HMLRClient(api_key="...", db_path="memory.db")
     await client.chat(message)
@@ -168,7 +168,7 @@ for message in messages:
 
 ### 3. Handle Async Properly
 ```python
-# ✅ Good - proper async context
+#  Good - proper async context
 async def main():
     client = HMLRClient(api_key="...", db_path="memory.db")
     response = await client.chat("Hello")
@@ -176,7 +176,7 @@ async def main():
 
 result = asyncio.run(main())
 
-# ❌ Bad - mixing sync/async incorrectly
+#  Bad - mixing sync/async incorrectly
 client = HMLRClient(api_key="...", db_path="memory.db")
 response = client.chat("Hello")  # Missing await!
 ```

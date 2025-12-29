@@ -21,81 +21,52 @@ class HMLRClient:
         
         client = HMLRClient(
             api_key="your-openai-key",
-            db_path="memory.db",
-            model="gpt-4.1-mini"  # ONLY tested model!
+            db_path="memory.db"
         )
         
         response = await client.chat("Tell me about Python")
         print(response["content"])
         ```
-    
-    WARNING: Only tested with gpt-4.1-mini. Other models may fail.
     """
     
     def __init__(
         self,
-        api_key: str,
-        db_path: str = "hmlr_memory.db",
-        model: str = "gpt-4.1-mini",
-        use_llm_intent_mode: bool = False,
-        context_budget_tokens: int = 12000,
-        max_sliding_window_turns: int = 15,
-        crawler_recency_weight: float = 0.3,
+        api_key: Optional[str] = None,
+        db_path: Optional[str] = None,
         **kwargs
     ):
         """
         Initialize HMLR client.
         
         Args:
-            api_key: OpenAI API key
-            db_path: Path to SQLite database for memory storage
-            model: OpenAI model to use (default: gpt-4.1-mini)
-                   WARNING: Only gpt-4.1-mini has been tested!
-            use_llm_intent_mode: Use LLM for intent detection (default: False)
-            context_budget_tokens: Max tokens for context (default: 12000)
-            max_sliding_window_turns: Max turns in sliding window (default: 15)
-            crawler_recency_weight: Weight for recent turns in retrieval (default: 0.3)
-            **kwargs: Additional configuration options
+            api_key: Optional API key. If not provided, system uses environment variables.
+            db_path: Optional path to SQLite database. If not provided, uses default.
+            **kwargs: Additional configuration options (unused)
         """
-        # Model compatibility warning
-        if model != "gpt-4.1-mini":
-            warnings.warn(
-                f"⚠️  Model '{model}' has NOT been tested!\n"
-                f"HMLR is only validated with 'gpt-4.1-mini'.\n"
-                f"Other models may produce incorrect results or fail completely.\n"
-                f"Use at your own risk!",
-                UserWarning,
-                stacklevel=2
-            )
+        from hmlr.core.model_config import model_config
+        model_name = model_config.get_main_model()
         
-        # Set API key and database path in environment
-        os.environ["OPENAI_API_KEY"] = api_key
-        if db_path:
-            os.environ["COGNITIVE_LATTICE_DB"] = db_path
-        
-        # Store configuration
-        self.db_path = db_path
-        self.model = model
-        
-        # Initialize components
-        print(f"🏗️  Initializing HMLR with {model}...")
+        # Initialize components using centralized config AND injected secrets
+        # print(f"🏗️  Initializing HMLR with {model_name}...")
         self.components = ComponentFactory.create_all_components(
-            use_llm_intent_mode=use_llm_intent_mode,
-            context_budget_tokens=context_budget_tokens,
-            max_sliding_window_turns=max_sliding_window_turns,
-            crawler_recency_weight=crawler_recency_weight
+            api_key=api_key,
+            db_path=db_path
         )
+        
+        self.db_path = self.components.storage.db_path
+        self.model = model_name
         
         # Create conversation engine
         self.engine = ComponentFactory.create_conversation_engine(
             self.components
         )
         
-        print(f"✅ HMLR initialized successfully")
+        # print(f"✅ HMLR initialized successfully")
     
     async def chat(
         self,
         message: str,
+        session_id: str = "default_session",
         force_intent: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
@@ -104,17 +75,16 @@ class HMLRClient:
         
         Args:
             message: User's message
+            session_id: Unique identifier for the conversation session (NEW)
             force_intent: Override intent detection (optional)
             **kwargs: Additional parameters for conversation engine
         
         Returns:
-            Response dictionary with:
-            - content: The AI's response text
-            - status: Response status (success/error)
-            - metadata: Additional information about the response
+            Response dictionary
         """
         response = await self.engine.process_user_message(
             message,
+            session_id=session_id,
             force_intent=force_intent,
             **kwargs
         )
@@ -136,21 +106,9 @@ class HMLRClient:
             - db_path: Path to database file
             - model: Model being used
         """
-        storage = self.components.storage
-        
-        # Get total turns (try to get all, fall back to estimate)
-        try:
-            all_turns = storage.get_recent_turns(day_id=None, limit=100000)
-            total_turns = len(all_turns)
-        except Exception:
-            total_turns = "unknown"
-        
-        return {
-            "total_turns": total_turns,
-            "sliding_window_size": len(self.components.sliding_window.turns),
-            "db_path": self.db_path,
-            "model": self.model
-        }
+        stats = self.engine.get_memory_stats()
+        stats["db_path"] = self.db_path
+        return stats
     
     def get_recent_conversations(self, limit: int = 10) -> list:
         """
@@ -162,18 +120,17 @@ class HMLRClient:
         Returns:
             List of recent conversation turns
         """
-        storage = self.components.storage
-        return storage.get_recent_turns(day_id=None, limit=limit)
+        return self.engine.get_recent_turns(limit=limit)
     
     def clear_sliding_window(self):
         """
-        Clear the sliding window (keeps database intact).
+        Clear the sliding window transient state.
         
-        This only clears the in-memory sliding window, not the
-        permanent storage. Use this to start fresh while keeping history.
+        In the stateless model, this only clears deduplication sets and caches
+        for the current session.
         """
-        self.components.sliding_window.turns.clear()
-        print("🧹 Sliding window cleared")
+        self.engine.clear_session_state()
+        # print("🧹 Sliding window transient state cleared")
     
     def close(self):
         """
@@ -185,7 +142,7 @@ class HMLRClient:
         if hasattr(self.components.storage, 'close'):
             self.components.storage.close()
         
-        print("👋 HMLR client closed")
+        # print("👋 HMLR client closed")
     
     def __enter__(self):
         """Support context manager protocol."""

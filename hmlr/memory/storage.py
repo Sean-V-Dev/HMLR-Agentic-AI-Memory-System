@@ -9,16 +9,16 @@ It handles:
 - Summaries and affect tracking
 - Metadata staging for synthesis
 
-Author: CognitiveLattice Team
-Created: 2025-10-10
 """
 
 import sqlite3
 import json
 import logging
+import time
 from datetime import datetime
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any, Tuple, Callable
 from pathlib import Path
+from hmlr.core.model_config import model_config
 
 logger = logging.getLogger(__name__)
 
@@ -26,55 +26,32 @@ logger = logging.getLogger(__name__)
 from .models import UserPlan, PlanItem, PlanFeedback, PlanModification
 import os
 
-try:
-    from .models import (
-        DayNode,
-        TaskState,
-        Keyword,
-        Summary,
-        Affect,
-        DaySynthesis,
-        ConversationTurn,
-        TaskStatus,
-        TaskType,
-        create_day_id,
-        Span,
-        HierarchicalSummary
-    )
-    from .id_generator import (
-        generate_turn_id,
-        generate_session_id,
-        generate_keyword_id,
-        generate_summary_id,
-        generate_affect_id,
-        generate_task_id,
-        parse_id,
-        get_id_type
-    )
-except ImportError:
-    # For standalone testing
-    from models import (
-        DayNode,
-        TaskState,
-        Keyword,
-        Summary,
-        Affect,
-        DaySynthesis,
-        ConversationTurn,
-        TaskStatus,
-        TaskType,
-        create_day_id
-    )
-    from id_generator import (
-        generate_turn_id,
-        generate_session_id,
-        generate_keyword_id,
-        generate_summary_id,
-        generate_affect_id,
-        generate_task_id,
-        parse_id,
-        get_id_type
-    )
+from .models import (
+    DayNode,
+    TaskState,
+    Keyword,
+    Summary,
+    Affect,
+    DaySynthesis,
+    ConversationTurn,
+    TaskStatus,
+    TaskType,
+    create_day_id,
+    Span
+)
+from .persistence.schema import initialize_database
+from .persistence.dossier_store import DossierStore
+from .persistence.ledger_store import LedgerStore
+from .id_generator import (
+    generate_turn_id,
+    generate_session_id,
+    generate_keyword_id,
+    generate_summary_id,
+    generate_affect_id,
+    generate_task_id,
+    parse_id,
+    get_id_type
+)
 
 
 class Storage:
@@ -88,389 +65,63 @@ class Storage:
         Initialize storage with SQLite database.
         
         Args:
-            db_path: Path to SQLite database file. If None, uses default in memory/ folder
+            db_path: Path to SQLite database file. 
+                     If None, checks HMLR_DB_PATH env var, 
+                     else defaults to ~/.hmlr/cognitive_lattice_memory.db
         """
         if db_path is None:
-            # Default to memory folder in project root
-            memory_dir = Path(__file__).parent
-            db_path = str(memory_dir / "cognitive_lattice_memory.db")
+            # 1. Check environment variable
+            env_path = os.getenv("HMLR_DB_PATH")
+            if env_path:
+                db_path = env_path
+            else:
+                # 2. Default to user home directory (XDG style)
+                # This ensures persistence survives package updates/reinstalls
+                home_dir = Path.home() / ".hmlr"
+                home_dir.mkdir(parents=True, exist_ok=True)
+                db_path = str(home_dir / "cognitive_lattice_memory.db")
         
         self.db_path = db_path
+        
+        # Ensure directory exists if explicit path provided
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+
         self.conn = None
         self._initialize_database()
     
     def _initialize_database(self):
-        """Create database and tables if they don't exist"""
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        """Create database and tables if they don't exist with WAL and busy timeout."""
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=5.0)
         self.conn.row_factory = sqlite3.Row  # Enable dict-like access
-        
-        cursor = self.conn.cursor()
-        
-        # === DAYS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS days (
-                day_id TEXT PRIMARY KEY,
-                created_at TIMESTAMP NOT NULL,
-                prev_day TEXT,
-                next_day TEXT
-            )
-        """)
-        
-        # === DAY SESSIONS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS day_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                day_id TEXT NOT NULL,
-                session_id TEXT NOT NULL,
-                FOREIGN KEY (day_id) REFERENCES days(day_id),
-                UNIQUE(day_id, session_id)
-            )
-        """)
-        
-        # === DAY KEYWORDS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS day_keywords (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                day_id TEXT NOT NULL,
-                keyword TEXT NOT NULL,
-                first_mentioned TIMESTAMP NOT NULL,
-                last_mentioned TIMESTAMP NOT NULL,
-                frequency INTEGER DEFAULT 1,
-                turn_ids TEXT,
-                FOREIGN KEY (day_id) REFERENCES days(day_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_keywords ON day_keywords(keyword)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_day_keywords ON day_keywords(day_id, keyword)")
-        
-        # === DAY SUMMARIES TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS day_summaries (
-                turn_id INTEGER NOT NULL,
-                day_id TEXT NOT NULL,
-                timestamp TIMESTAMP NOT NULL,
-                user_query_summary TEXT,
-                assistant_response_summary TEXT,
-                keywords_this_turn TEXT,
-                PRIMARY KEY (day_id, turn_id),
-                FOREIGN KEY (day_id) REFERENCES days(day_id)
-            )
-        """)
-        
-        # === DAY AFFECT TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS day_affect (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                day_id TEXT NOT NULL,
-                affect_label TEXT NOT NULL,
-                first_detected TIMESTAMP NOT NULL,
-                last_detected TIMESTAMP NOT NULL,
-                intensity REAL DEFAULT 0.5,
-                associated_topics TEXT,
-                turn_ids TEXT,
-                FOREIGN KEY (day_id) REFERENCES days(day_id)
-            )
-        """)
-        
-        # === TASKS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                task_id TEXT PRIMARY KEY,
-                task_type TEXT NOT NULL,
-                status TEXT NOT NULL,
-                created_date TEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                last_updated TIMESTAMP NOT NULL,
-                completed_at TIMESTAMP,
-                task_title TEXT,
-                original_query TEXT,
-                total_steps INTEGER DEFAULT 0,
-                completed_steps INTEGER DEFAULT 0,
-                skipped_steps INTEGER DEFAULT 0,
-                tags TEXT,
-                notes TEXT,
-                state_json TEXT
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_status ON tasks(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_date ON tasks(created_date)")
-        
-        # === TASK DAYS TABLE (task-day associations) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS task_days (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                task_id TEXT NOT NULL,
-                day_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                timestamp TIMESTAMP NOT NULL,
-                FOREIGN KEY (task_id) REFERENCES tasks(task_id),
-                FOREIGN KEY (day_id) REFERENCES days(day_id)
-            )
-        """)
-        
-        # === METADATA STAGING TABLE (pre-synthesis) ===
-        # Updated for Phase B: String IDs with lineage tracking
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS metadata_staging (
-                turn_id TEXT NOT NULL,
-                turn_sequence INTEGER NOT NULL,
-                session_id TEXT NOT NULL,
-                day_id TEXT NOT NULL,
-                timestamp TIMESTAMP NOT NULL,
-                user_message TEXT,
-                assistant_response TEXT,
-                keywords TEXT,
-                user_summary TEXT,
-                assistant_summary TEXT,
-                detected_affect TEXT,
-                active_topics TEXT,
-                retrieval_sources TEXT,
-                summary_id TEXT,
-                keyword_ids TEXT,
-                affect_ids TEXT,
-                task_created_id TEXT,
-                task_updated_ids TEXT,
-                loaded_turn_ids TEXT,
-                span_id TEXT,
-                PRIMARY KEY (turn_id),
-                UNIQUE (session_id, turn_sequence)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_turn_day ON metadata_staging(day_id, timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_turn_session ON metadata_staging(session_id, turn_sequence)")
-        
-        # === NEW: SUMMARIES TABLE (with lineage) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS summaries (
-                summary_id TEXT PRIMARY KEY,
-                source_turn_id TEXT NOT NULL,
-                day_id TEXT NOT NULL,
-                timestamp TIMESTAMP NOT NULL,
-                user_query_summary TEXT NOT NULL,
-                assistant_response_summary TEXT NOT NULL,
-                keywords_this_turn TEXT,
-                derived_from TEXT NOT NULL,
-                derived_by TEXT NOT NULL,
-                extraction_method TEXT NOT NULL,
-                FOREIGN KEY (source_turn_id) REFERENCES metadata_staging(turn_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_summary_turn ON summaries(source_turn_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_summary_day ON summaries(day_id, timestamp)")
-        
-        # === NEW: KEYWORDS TABLE (with lineage) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS keywords (
-                keyword_id TEXT PRIMARY KEY,
-                keyword TEXT NOT NULL,
-                source_turn_id TEXT NOT NULL,
-                day_id TEXT NOT NULL,
-                first_mentioned TIMESTAMP NOT NULL,
-                last_mentioned TIMESTAMP NOT NULL,
-                frequency INTEGER DEFAULT 1,
-                derived_from TEXT NOT NULL,
-                derived_by TEXT NOT NULL,
-                confidence REAL DEFAULT 1.0,
-                FOREIGN KEY (source_turn_id) REFERENCES metadata_staging(turn_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_keyword_word ON keywords(keyword)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_keyword_day ON keywords(day_id, keyword)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_keyword_turn ON keywords(source_turn_id)")
-        
-        # === NEW: AFFECT TABLE (with lineage) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS affect (
-                affect_id TEXT PRIMARY KEY,
-                affect_label TEXT NOT NULL,
-                source_turn_id TEXT NOT NULL,
-                day_id TEXT NOT NULL,
-                first_detected TIMESTAMP NOT NULL,
-                last_detected TIMESTAMP NOT NULL,
-                intensity REAL DEFAULT 0.5,
-                confidence REAL DEFAULT 0.8,
-                associated_topics TEXT,
-                derived_from TEXT NOT NULL,
-                derived_by TEXT NOT NULL,
-                detection_method TEXT NOT NULL,
-                trigger_context TEXT,
-                FOREIGN KEY (source_turn_id) REFERENCES metadata_staging(turn_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_affect_label ON affect(affect_label, day_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_affect_turn ON affect(source_turn_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_affect_day ON affect(day_id, first_detected)")
-        
-        # === HMLR v1: SPANS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS spans (
-                span_id TEXT PRIMARY KEY,
-                day_id TEXT NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                last_active_at TIMESTAMP NOT NULL,
-                topic_label TEXT,
-                is_active BOOLEAN DEFAULT 1,
-                summary_id TEXT,
-                parent_span_id TEXT,
-                turn_ids_json TEXT
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_spans_day ON spans(day_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_spans_active ON spans(is_active)")
 
-        # === HMLR v1: HIERARCHICAL SUMMARIES TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS hierarchical_summaries (
-                summary_id TEXT PRIMARY KEY,
-                created_at TIMESTAMP NOT NULL,
-                content TEXT NOT NULL,
-                embedding_json TEXT,
-                level INTEGER DEFAULT 0,
-                topics_json TEXT,
-                span_ids_json TEXT,
-                child_summary_ids_json TEXT
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_hsum_level ON hierarchical_summaries(level)")
+        # Enable WAL for better concurrent access and set a busy timeout
+        self.conn.execute("PRAGMA journal_mode=WAL;")
+        self.conn.execute("PRAGMA busy_timeout=5000;")  # 5s base busy timeout
 
-        # === PHASE 11.1: DAILY LEDGER TABLE (Bridge Blocks) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS daily_ledger (
-                block_id TEXT PRIMARY KEY,
-                prev_block_id TEXT,
-                span_id TEXT,
-                content_json TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT,
-                status TEXT DEFAULT 'PAUSED',
-                exit_reason TEXT,
-                embedding_status TEXT DEFAULT 'PENDING',
-                embedded_at TEXT
-            )
-        """)
-        
-        # Migration: Add updated_at column if it doesn't exist
-        try:
-            cursor.execute("SELECT updated_at FROM daily_ledger LIMIT 1")
-        except:
-            logger.info("Migrating daily_ledger: Adding updated_at column")
-            cursor.execute("ALTER TABLE daily_ledger ADD COLUMN updated_at TEXT")
-        
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ledger_status ON daily_ledger(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ledger_date ON daily_ledger(created_at)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ledger_span ON daily_ledger(span_id)")
+        # Delegate schema creation to persistence/schema.py
+        initialize_database(self.conn)
+        logger.info(f"Storage initialized: {self.db_path} (WAL enabled, busy_timeout=5000ms)")
 
-        # === PHASE 11.1: FACT STORE TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS fact_store (
-                fact_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                key TEXT NOT NULL,
-                value TEXT NOT NULL,
-                category TEXT,
-                source_span_id TEXT,
-                source_chunk_id TEXT,
-                source_paragraph_id TEXT,
-                source_block_id TEXT,
-                evidence_snippet TEXT,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (source_span_id) REFERENCES spans(span_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_key ON fact_store(key)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_span ON fact_store(source_span_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_block ON fact_store(source_block_id)")
+    def _with_retry(self, fn: Callable[[], Any], retries: int = 3, base_delay: float = 0.1) -> Any:
+        """Retry helper for transient SQLite busy/lock errors."""
+        attempt = 0
+        while True:
+            try:
+                return fn()
+            except sqlite3.OperationalError as e:
+                msg = str(e).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise
+                attempt += 1
+                if attempt > retries:
+                    raise
+                sleep_for = base_delay * (2 ** (attempt - 1))
+                time.sleep(sleep_for)
+            except Exception:
+                raise
 
-        # === DAY SYNTHESIS TABLE ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS day_synthesis (
-                day_id TEXT PRIMARY KEY,
-                created_at TIMESTAMP NOT NULL,
-                emotional_arc TEXT,
-                key_patterns TEXT,
-                topic_affect_mapping TEXT,
-                behavioral_notes TEXT,
-                narrative_summary TEXT,
-                notable_moments TEXT,
-                FOREIGN KEY (day_id) REFERENCES days(day_id)
-            )
-        """)
-        
-        # === PLANNING SYSTEM TABLES ===
-        # User plans metadata
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_plans (
-                plan_id TEXT PRIMARY KEY,
-                topic TEXT NOT NULL,
-                title TEXT NOT NULL,
-                created_date TEXT NOT NULL,
-                duration_weeks INTEGER DEFAULT 4,
-                status TEXT DEFAULT 'active',
-                progress_percentage REAL DEFAULT 0.0,
-                last_updated TEXT,
-                notes TEXT
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_status ON user_plans(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_topic ON user_plans(topic)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_date ON user_plans(created_date)")
-        
-        # Individual plan items
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_items (
-                plan_id TEXT NOT NULL,
-                date TEXT NOT NULL,
-                task TEXT NOT NULL,
-                duration_minutes INTEGER NOT NULL,
-                completed BOOLEAN DEFAULT FALSE,
-                notes TEXT,
-                actual_duration INTEGER,
-                completion_time TEXT,
-                FOREIGN KEY (plan_id) REFERENCES user_plans(plan_id),
-                PRIMARY KEY (plan_id, date, task)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_item_date ON plan_items(date)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_item_completed ON plan_items(completed)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_plan_item_plan ON plan_items(plan_id)")
-        
-        # Plan feedback and modifications (for future phases)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_feedback (
-                feedback_id TEXT PRIMARY KEY,
-                plan_id TEXT NOT NULL,
-                date TEXT NOT NULL,
-                feedback_type TEXT NOT NULL,
-                user_feedback TEXT NOT NULL,
-                llm_response TEXT,
-                emotional_context TEXT,
-                timestamp TEXT NOT NULL,
-                FOREIGN KEY (plan_id) REFERENCES user_plans(plan_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_plan ON plan_feedback(plan_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_date ON plan_feedback(date)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_type ON plan_feedback(feedback_type)")
-        
-        # === EMBEDDINGS TABLE (Vector storage for RAG) ===
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS embeddings (
-                embedding_id TEXT PRIMARY KEY,
-                turn_id TEXT NOT NULL,
-                chunk_index INTEGER NOT NULL,
-                embedding BLOB NOT NULL,
-                text_content TEXT NOT NULL,
-                dimension INTEGER DEFAULT 384,
-                model_name TEXT DEFAULT 'all-MiniLM-L6-v2',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (turn_id) REFERENCES metadata_staging(turn_id)
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_embedding_turn ON embeddings(turn_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_embedding_chunk ON embeddings(turn_id, chunk_index)")
-        
-        self.conn.commit()
-        print(f"Storage initialized: {self.db_path}")
-    
     # =========================================================================
     # DAY NODE OPERATIONS
     # =========================================================================
@@ -481,32 +132,45 @@ class Storage:
             day_id = create_day_id()
         
         cursor = self.conn.cursor()
-        
+
         # Check if day already exists
         cursor.execute("SELECT day_id FROM days WHERE day_id = ?", (day_id,))
         if cursor.fetchone():
             return self.get_day(day_id)
-        
+
         # Create new day
         created_at = datetime.now()
-        cursor.execute("""
-            INSERT INTO days (day_id, created_at)
-            VALUES (?, ?)
-        """, (day_id, created_at))
-        
+
+        def _insert_day():
+            cursor.execute(
+                """
+                INSERT INTO days (day_id, created_at)
+                VALUES (?, ?)
+                """,
+                (day_id, created_at),
+            )
+
+        self._with_retry(_insert_day)
+
         # Link to previous day if it exists
         prev_day_id = self._get_previous_day_id(day_id)
         if prev_day_id:
-            # Update this day's prev_day
-            cursor.execute("""
-                UPDATE days SET prev_day = ? WHERE day_id = ?
-            """, (prev_day_id, day_id))
-            
-            # Update previous day's next_day
-            cursor.execute("""
-                UPDATE days SET next_day = ? WHERE day_id = ?
-            """, (day_id, prev_day_id))
-        
+            def _link_prev():
+                cursor.execute(
+                    """
+                    UPDATE days SET prev_day = ? WHERE day_id = ?
+                    """,
+                    (prev_day_id, day_id),
+                )
+                cursor.execute(
+                    """
+                    UPDATE days SET next_day = ? WHERE day_id = ?
+                    """,
+                    (day_id, prev_day_id),
+                )
+
+            self._with_retry(_link_prev)
+
         self.conn.commit()
         
         return DayNode(
@@ -533,49 +197,45 @@ class Storage:
         """, (day_id,))
         session_ids = [r['session_id'] for r in cursor.fetchall()]
         
-        # Get keywords
-        keywords = self.get_day_keywords(day_id)
-        
-        # Get summaries
-        summaries = self.get_day_summaries(day_id)
-        
-        # Get affect patterns
-        affect_patterns = self.get_day_affect(day_id)
-        
-        # Get synthesis if exists
-        synthesis = self.get_day_synthesis(day_id)
-        
         return DayNode(
             day_id=row['day_id'],
             created_at=datetime.fromisoformat(row['created_at']),
             prev_day=row['prev_day'],
             next_day=row['next_day'],
             session_ids=session_ids,
-            keywords=keywords,
-            summaries=summaries,
-            affect_patterns=affect_patterns,
-            synthesis=synthesis
+            keywords=[],
+            summaries=[],
+            affect_patterns=[],
+            synthesis=None
         )
     
     def add_session_to_day(self, day_id: str, session_id: str) -> None:
         """Associate a session with a day"""
         cursor = self.conn.cursor()
-        
+
         # Ensure day exists
         cursor.execute("SELECT day_id FROM days WHERE day_id = ?", (day_id,))
         if not cursor.fetchone():
             self.create_day(day_id)
-        
+
         # Add session (ignore if duplicate)
-        try:
-            cursor.execute("""
+        def _insert_session():
+            cursor.execute(
+                """
                 INSERT INTO day_sessions (day_id, session_id)
                 VALUES (?, ?)
-            """, (day_id, session_id))
+                """,
+                (day_id, session_id),
+            )
+
+        try:
+            self._with_retry(_insert_session)
             self.conn.commit()
-        except sqlite3.IntegrityError:
-            # Session already associated with this day
-            pass
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE constraint" in str(e) or "unique constraint" in str(e):
+                return
+            logger.error(f"Database error adding session {session_id} to day {day_id}: {e}")
+            raise
     
     def _get_previous_day_id(self, day_id: str) -> Optional[str]:
         """Find the most recent day before this one"""
@@ -591,377 +251,13 @@ class Storage:
         return row['day_id'] if row else None
     
     # =========================================================================
-    # KEYWORD OPERATIONS
-    # =========================================================================
-    
-    def add_keyword(self, day_id: str, keyword: Keyword) -> None:
-        """Add or update a keyword for a day"""
-        cursor = self.conn.cursor()
-        
-        # Check if keyword exists for this day
-        cursor.execute("""
-            SELECT id, frequency, turn_ids FROM day_keywords
-            WHERE day_id = ? AND keyword = ?
-        """, (day_id, keyword.keyword))
-        
-        existing = cursor.fetchone()
-        
-        if existing:
-            # Update existing keyword
-            old_turn_ids = json.loads(existing['turn_ids']) if existing['turn_ids'] else []
-            new_turn_ids = list(set(old_turn_ids + keyword.turn_ids))
-            
-            cursor.execute("""
-                UPDATE day_keywords
-                SET last_mentioned = ?,
-                    frequency = frequency + ?,
-                    turn_ids = ?
-                WHERE id = ?
-            """, (
-                keyword.last_mentioned,
-                keyword.frequency,
-                json.dumps(new_turn_ids),
-                existing['id']
-            ))
-        else:
-            # Insert new keyword
-            cursor.execute("""
-                INSERT INTO day_keywords 
-                (day_id, keyword, first_mentioned, last_mentioned, frequency, turn_ids)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                day_id,
-                keyword.keyword,
-                keyword.first_mentioned,
-                keyword.last_mentioned,
-                keyword.frequency,
-                json.dumps(keyword.turn_ids)
-            ))
-        
-        self.conn.commit()
-    
-    def get_day_keywords(self, day_id: str) -> List[Keyword]:
-        """Get all keywords for a day"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT keyword, first_mentioned, last_mentioned, frequency, turn_ids
-            FROM day_keywords
-            WHERE day_id = ?
-            ORDER BY frequency DESC
-        """, (day_id,))
-        
-        keywords = []
-        for row in cursor.fetchall():
-            turn_ids_list = json.loads(row['turn_ids']) if row['turn_ids'] else []
-            # Use first turn as source if available, otherwise generate ID
-            source_turn_id = turn_ids_list[0] if turn_ids_list else f"t_{day_id}_unknown"
-            keyword_id = f"k1_{row['keyword']}_{day_id}"
-            
-            keywords.append(Keyword(
-                keyword_id=keyword_id,
-                keyword=row['keyword'],
-                source_turn_id=source_turn_id,
-                day_id=day_id,
-                first_mentioned=datetime.fromisoformat(row['first_mentioned']),
-                last_mentioned=datetime.fromisoformat(row['last_mentioned']),
-                frequency=row['frequency'],
-                turn_ids=turn_ids_list
-            ))
-        
-        return keywords
-    
-    def search_keywords(self, keywords: List[str], date_range: Tuple[str, str] = None) -> List[Dict[str, Any]]:
-        """
-        Search for keywords across days (Phase 3 schema).
-        Returns matching day_id, keyword, turn content, and metadata.
-        
-        Now searches the 'keywords' table (Phase 3) with full context from metadata_staging.
-        """
-        cursor = self.conn.cursor()
-        
-        # Build query - search new keywords table with context from metadata_staging
-        placeholders = ','.join('?' * len(keywords))
-        query = f"""
-            SELECT 
-                k.day_id, 
-                k.keyword, 
-                k.source_turn_id,
-                k.first_mentioned, 
-                k.last_mentioned, 
-                k.frequency,
-                m.user_message,
-                m.assistant_response,
-                m.timestamp as turn_timestamp
-            FROM keywords k
-            LEFT JOIN metadata_staging m ON k.source_turn_id = m.turn_id
-            WHERE k.keyword IN ({placeholders})
-        """
-        params = list(keywords)
-        
-        if date_range:
-            query += " AND k.day_id BETWEEN ? AND ?"
-            params.extend(date_range)
-        
-        query += " ORDER BY k.day_id DESC, k.frequency DESC"
-        
-        cursor.execute(query, params)
-        
-        results = []
-        for row in cursor.fetchall():
-            # Build context from turn content
-            context = f"User: {row['user_message']}\nAssistant: {row['assistant_response']}"
-            
-            results.append({
-                'day_id': row['day_id'],
-                'keyword': row['keyword'],
-                'first_mentioned': row['first_mentioned'],
-                'last_mentioned': row['last_mentioned'],
-                'frequency': row['frequency'],
-                'turn_ids': [row['source_turn_id']],  # Single turn per keyword entry
-                'context': context,  # NEW: Full conversation context
-                'timestamp': row['turn_timestamp'],  # NEW: Turn timestamp
-                'session_id': None  # Compatibility with old schema
-            })
-        
-        return results
-    
-    # =========================================================================
-    # SUMMARY OPERATIONS
-    # =========================================================================
-    
-    def add_summary(self, day_id: str, summary: Summary) -> None:
-        """Add a turn summary"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO day_summaries
-            (turn_id, day_id, timestamp, user_query_summary, 
-             assistant_response_summary, keywords_this_turn)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            summary.turn_id,
-            day_id,
-            summary.timestamp,
-            summary.user_query_summary,
-            summary.assistant_response_summary,
-            json.dumps(summary.keywords_this_turn)
-        ))
-        self.conn.commit()
-    
-    def get_day_summaries(self, day_id: str) -> List[Summary]:
-        """Get all summaries for a day"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT turn_id, timestamp, user_query_summary,
-                   assistant_response_summary, keywords_this_turn
-            FROM day_summaries
-            WHERE day_id = ?
-            ORDER BY turn_id
-        """, (day_id,))
-        
-        summaries = []
-        for row in cursor.fetchall():
-            summaries.append(Summary(
-                turn_id=row['turn_id'],
-                timestamp=datetime.fromisoformat(row['timestamp']),
-                user_query_summary=row['user_query_summary'],
-                assistant_response_summary=row['assistant_response_summary'],
-                keywords_this_turn=json.loads(row['keywords_this_turn']) if row['keywords_this_turn'] else []
-            ))
-        
-        return summaries
-    
-    # =========================================================================
-    # AFFECT OPERATIONS
-    # =========================================================================
-    
-    def add_affect(self, day_id: str, affect: Affect) -> None:
-        """Add or update an affect pattern"""
-        cursor = self.conn.cursor()
-        
-        # Check if affect exists for this day
-        cursor.execute("""
-            SELECT id FROM day_affect
-            WHERE day_id = ? AND affect_label = ?
-        """, (day_id, affect.affect_label))
-        
-        existing = cursor.fetchone()
-        
-        if existing:
-            # Update existing
-            cursor.execute("""
-                UPDATE day_affect
-                SET last_detected = ?,
-                    intensity = ?,
-                    associated_topics = ?,
-                    turn_ids = ?
-                WHERE id = ?
-            """, (
-                affect.last_detected,
-                affect.intensity,
-                json.dumps(affect.associated_topics),
-                json.dumps(affect.turn_ids),
-                existing['id']
-            ))
-        else:
-            # Insert new
-            cursor.execute("""
-                INSERT INTO day_affect
-                (day_id, affect_label, first_detected, last_detected,
-                 intensity, associated_topics, turn_ids)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                day_id,
-                affect.affect_label,
-                affect.first_detected,
-                affect.last_detected,
-                affect.intensity,
-                json.dumps(affect.associated_topics),
-                json.dumps(affect.turn_ids)
-            ))
-        
-        self.conn.commit()
-    
-    def get_day_affect(self, day_id: str) -> List[Affect]:
-        """Get all affect patterns for a day"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT affect_label, first_detected, last_detected,
-                   intensity, associated_topics, turn_ids
-            FROM day_affect
-            WHERE day_id = ?
-        """, (day_id,))
-        
-        affects = []
-        for row in cursor.fetchall():
-            turn_ids_list = json.loads(row['turn_ids']) if row['turn_ids'] else []
-            # Use first turn as source if available
-            source_turn_id = turn_ids_list[0] if turn_ids_list else f"t_{day_id}_unknown"
-            affect_id = f"a1_{row['affect_label']}_{day_id}"
-            
-            affects.append(Affect(
-                affect_id=affect_id,
-                affect_label=row['affect_label'],
-                source_turn_id=source_turn_id,
-                day_id=day_id,
-                first_detected=datetime.fromisoformat(row['first_detected']),
-                last_detected=datetime.fromisoformat(row['last_detected']),
-                intensity=row['intensity'],
-                associated_topics=json.loads(row['associated_topics']) if row['associated_topics'] else [],
-                turn_ids=turn_ids_list
-            ))
-        
-        return affects
-    
-    # =========================================================================
-    # TASK OPERATIONS
-    # =========================================================================
-    
-    def save_task(self, task: TaskState) -> None:
-        """Save or update a task"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO tasks
-            (task_id, task_type, status, created_date, created_at, last_updated,
-             completed_at, task_title, original_query, total_steps, completed_steps,
-             skipped_steps, tags, notes, state_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            task.task_id,
-            task.task_type.value,
-            task.status.value,
-            task.created_date,
-            task.created_at,
-            task.last_updated,
-            task.completed_at,
-            task.task_title,
-            task.original_query,
-            task.total_steps,
-            task.completed_steps,
-            task.skipped_steps,
-            json.dumps(task.tags),
-            task.notes,
-            json.dumps(task.state_json)
-        ))
-        self.conn.commit()
-    
-    def get_task(self, task_id: str) -> Optional[TaskState]:
-        """Get a task by ID"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM tasks WHERE task_id = ?
-        """, (task_id,))
-        
-        row = cursor.fetchone()
-        if not row:
-            return None
-        
-        return TaskState(
-            task_id=row['task_id'],
-            task_type=TaskType(row['task_type']),
-            status=TaskStatus(row['status']),
-            created_date=row['created_date'],
-            created_at=datetime.fromisoformat(row['created_at']),
-            last_updated=datetime.fromisoformat(row['last_updated']),
-            completed_at=datetime.fromisoformat(row['completed_at']) if row['completed_at'] else None,
-            task_title=row['task_title'] or "",
-            original_query=row['original_query'] or "",
-            total_steps=row['total_steps'],
-            completed_steps=row['completed_steps'],
-            skipped_steps=row['skipped_steps'],
-            tags=json.loads(row['tags']) if row['tags'] else [],
-            notes=row['notes'] or "",
-            state_json=json.loads(row['state_json']) if row['state_json'] else {}
-        )
-    
-    def get_active_tasks(self) -> List[TaskState]:
-        """Get all active tasks"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM tasks
-            WHERE status = ?
-            ORDER BY last_updated DESC
-        """, (TaskStatus.ACTIVE.value,))
-        
-        tasks = []
-        for row in cursor.fetchall():
-            tasks.append(TaskState(
-                task_id=row['task_id'],
-                task_type=TaskType(row['task_type']),
-                status=TaskStatus(row['status']),
-                created_date=row['created_date'],
-                created_at=datetime.fromisoformat(row['created_at']),
-                last_updated=datetime.fromisoformat(row['last_updated']),
-                completed_at=datetime.fromisoformat(row['completed_at']) if row['completed_at'] else None,
-                task_title=row['task_title'] or "",
-                original_query=row['original_query'] or "",
-                total_steps=row['total_steps'],
-                completed_steps=row['completed_steps'],
-                skipped_steps=row['skipped_steps'],
-                tags=json.loads(row['tags']) if row['tags'] else [],
-                notes=row['notes'] or "",
-                state_json=json.loads(row['state_json']) if row['state_json'] else {}
-            ))
-        
-        return tasks
-    
-    def link_task_to_day(self, task_id: str, day_id: str, event_type: str) -> None:
-        """Link a task event to a day"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            INSERT INTO task_days (task_id, day_id, event_type, timestamp)
-            VALUES (?, ?, ?, ?)
-        """, (task_id, day_id, event_type, datetime.now()))
-        self.conn.commit()
-    
-    # =========================================================================
     # METADATA STAGING OPERATIONS (Pre-Synthesis)
     # =========================================================================
     
     def stage_turn_metadata(self, turn: ConversationTurn) -> None:
         """
         Stage turn metadata for later synthesis.
-        
-        Updated for Phase B: Supports new string IDs and lineage references.
+
         """
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -999,8 +295,6 @@ class Storage:
     def get_staged_turns(self, day_id: str) -> List[ConversationTurn]:
         """
         Get all staged turns for a day.
-        
-        Updated for Phase B: Returns turns with new ID structure.
         """
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -1009,11 +303,54 @@ class Storage:
             ORDER BY turn_sequence
         """, (day_id,))
         
+        return self._rows_to_turns(cursor.fetchall())
+
+    def get_session_history(self, session_id: str, limit: int = 25, offset: int = 0) -> List[ConversationTurn]:
+        """
+        Retrieve turns for a specific session with pagination.
+        Used by VirtualSlidingWindow for stateless operation.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM metadata_staging
+            WHERE session_id = ?
+            ORDER BY turn_sequence DESC
+            LIMIT ? OFFSET ?
+        """, (session_id, limit, offset))
+        
+        # Reverse to get chronological order (since we queried DESC)
+        turns = self._rows_to_turns(cursor.fetchall())
+        turns.reverse()
+        return turns
+
+    def get_recent_turns(self, day_id: Optional[str] = None, limit: int = 20) -> List[ConversationTurn]:
+        """
+        Get most recent turns across all sessions or for a specific day.
+        """
+        cursor = self.conn.cursor()
+        if day_id:
+            cursor.execute("""
+                SELECT * FROM metadata_staging
+                WHERE day_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """, (day_id, limit))
+        else:
+            cursor.execute("""
+                SELECT * FROM metadata_staging
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """, (limit,))
+            
+        return self._rows_to_turns(cursor.fetchall())
+
+    def _rows_to_turns(self, rows: List[sqlite3.Row]) -> List[ConversationTurn]:
+        """Helper to convert DB rows to ConversationTurn objects"""
         turns = []
-        for row in cursor.fetchall():
+        for row in rows:
             turns.append(ConversationTurn(
                 turn_id=row['turn_id'],
-                turn_sequence=row['turn_sequence'],        # NEW
+                turn_sequence=row['turn_sequence'],
                 session_id=row['session_id'],
                 day_id=row['day_id'],
                 timestamp=datetime.fromisoformat(row['timestamp']),
@@ -1025,94 +362,91 @@ class Storage:
                 assistant_summary=row['assistant_summary'],
                 active_topics=json.loads(row['active_topics']) if row['active_topics'] else [],
                 retrieval_sources=json.loads(row['retrieval_sources']) if row['retrieval_sources'] else [],
-                summary_id=row['summary_id'],              # NEW
-                keyword_ids=json.loads(row['keyword_ids']) if row['keyword_ids'] else [],  # NEW
-                affect_ids=json.loads(row['affect_ids']) if row['affect_ids'] else [],      # NEW
-                task_created_id=row['task_created_id'],    # NEW
-                task_updated_ids=json.loads(row['task_updated_ids']) if row['task_updated_ids'] else [],  # NEW
-                loaded_turn_ids=json.loads(row['loaded_turn_ids']) if row['loaded_turn_ids'] else []      # NEW
+                summary_id=row['summary_id'],
+                keyword_ids=json.loads(row['keyword_ids']) if row['keyword_ids'] else [],
+                affect_ids=json.loads(row['affect_ids']) if row['affect_ids'] else [],
+                task_created_id=row['task_created_id'],
+                task_updated_ids=json.loads(row['task_updated_ids']) if row['task_updated_ids'] else [],
+                loaded_turn_ids=json.loads(row['loaded_turn_ids']) if row['loaded_turn_ids'] else [],
+                span_id=row['span_id']
             ))
-        
         return turns
     
-    def clear_staged_turns(self, day_id: str) -> None:
-        """Clear staged turns after synthesis"""
-        cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM metadata_staging WHERE day_id = ?", (day_id,))
-        self.conn.commit()
-    
-    # =========================================================================
-    # DAY SYNTHESIS OPERATIONS
-    # =========================================================================
-    
-    def save_day_synthesis(self, synthesis: DaySynthesis) -> None:
-        """Save day synthesis results"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            INSERT OR REPLACE INTO day_synthesis
-            (day_id, created_at, emotional_arc, key_patterns, topic_affect_mapping,
-             behavioral_notes, narrative_summary, notable_moments)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            synthesis.day_id,
-            synthesis.created_at,
-            synthesis.emotional_arc,
-            json.dumps(synthesis.key_patterns),
-            json.dumps(synthesis.topic_affect_mapping),
-            synthesis.behavioral_notes,
-            synthesis.narrative_summary,
-            json.dumps(synthesis.notable_moments)
-        ))
-        self.conn.commit()
-    
-    def get_day_synthesis(self, day_id: str) -> Optional[DaySynthesis]:
-        """Get day synthesis if it exists"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM day_synthesis WHERE day_id = ?
-        """, (day_id,))
+    def get_turn_by_id(self, turn_id: str) -> Optional[ConversationTurn]:
+        """
+        Fetch a single conversation turn by its ID.
         
+        Args:
+            turn_id: The unique turn identifier (t_...)
+            
+        Returns:
+            ConversationTurn object or None if not found
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM metadata_staging WHERE turn_id = ?", (turn_id,))
         row = cursor.fetchone()
+        
         if not row:
             return None
-        
-        return DaySynthesis(
+            
+        return ConversationTurn(
+            turn_id=row['turn_id'],
+            turn_sequence=row['turn_sequence'],
+            session_id=row['session_id'],
             day_id=row['day_id'],
-            created_at=datetime.fromisoformat(row['created_at']),
-            emotional_arc=row['emotional_arc'],
-            key_patterns=json.loads(row['key_patterns']) if row['key_patterns'] else [],
-            topic_affect_mapping=json.loads(row['topic_affect_mapping']) if row['topic_affect_mapping'] else {},
-            behavioral_notes=row['behavioral_notes'] or "",
-            narrative_summary=row['narrative_summary'],
-            notable_moments=json.loads(row['notable_moments']) if row['notable_moments'] else []
+            timestamp=datetime.fromisoformat(row['timestamp']) if isinstance(row['timestamp'], str) else row['timestamp'],
+            user_message=row['user_message'],
+            assistant_response=row['assistant_response'],
+            keywords=json.loads(row['keywords']) if row['keywords'] else [],
+            detected_affect=json.loads(row['detected_affect']) if row['detected_affect'] else [],
+            user_summary=row['user_summary'],
+            assistant_summary=row['assistant_summary'],
+            active_topics=json.loads(row['active_topics']) if row['active_topics'] else [],
+            retrieval_sources=json.loads(row['retrieval_sources']) if row['retrieval_sources'] else [],
+            summary_id=row['summary_id'],
+            keyword_ids=json.loads(row['keyword_ids']) if row['keyword_ids'] else [],
+            affect_ids=json.loads(row['affect_ids']) if row['affect_ids'] else [],
+            task_created_id=row['task_created_id'],
+            task_updated_ids=json.loads(row['task_updated_ids']) if row['task_updated_ids'] else [],
+            loaded_turn_ids=json.loads(row['loaded_turn_ids']) if row['loaded_turn_ids'] else [],
+            span_id=row['span_id'] if 'span_id' in row.keys() else None
         )
+
+    def get_facts_by_turn_id(self, turn_id: str) -> List[Dict[str, Any]]:
+        """
+        Fetch all facts originating from a specific turn.
+        
+        Args:
+            turn_id: The turn identifier (t_...)
+            
+        Returns:
+            List of fact dictionaries
+        """
+        cursor = self.conn.cursor()
+
+        # 1. Get from fact_store
+        cursor.execute("SELECT * FROM fact_store WHERE source_turn_id = ?", (turn_id,))
+        facts = [dict(row) for row in cursor.fetchall()]
+
+        # 2. Get from dossier_facts (if not already found)
+        cursor.execute("SELECT * FROM dossier_facts WHERE source_turn_id = ?", (turn_id,))
+        dossier_facts = [dict(row) for row in cursor.fetchall()]
+
+        all_facts = facts + dossier_facts
+        return all_facts
     
     # =========================================================================
     # UTILITY METHODS
     # =========================================================================
     
-    def get_day_range(self, start_date: str, end_date: str) -> List[DayNode]:
-        """Get all days in a date range"""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT day_id FROM days
-            WHERE day_id BETWEEN ? AND ?
-            ORDER BY day_id
-        """, (start_date, end_date))
-        
-        return [self.get_day(row['day_id']) for row in cursor.fetchall()]
-    
     def get_stats(self) -> Dict[str, Any]:
-        """Get storage statistics"""
         cursor = self.conn.cursor()
         
         stats = {}
         
-        # Count days
         cursor.execute("SELECT COUNT(*) as count FROM days")
         stats['total_days'] = cursor.fetchone()['count']
         
-        # Count tasks by status
         cursor.execute("""
             SELECT status, COUNT(*) as count
             FROM tasks
@@ -1120,15 +454,9 @@ class Storage:
         """)
         stats['tasks_by_status'] = {row['status']: row['count'] for row in cursor.fetchall()}
         
-        # Count keywords
-        cursor.execute("SELECT COUNT(DISTINCT keyword) as count FROM day_keywords")
-        stats['unique_keywords'] = cursor.fetchone()['count']
-        
-        # Count staged turns
         cursor.execute("SELECT COUNT(*) as count FROM metadata_staging")
         stats['staged_turns'] = cursor.fetchone()['count']
         
-        # Count embeddings
         cursor.execute("SELECT COUNT(*) as count FROM embeddings")
         stats['total_embeddings'] = cursor.fetchone()['count']
         
@@ -1140,7 +468,7 @@ class Storage:
     
     def save_embedding(self, embedding_id: str, turn_id: str, chunk_index: int,
                       embedding_bytes: bytes, text_content: str,
-                      dimension: int = 384, model_name: str = 'all-MiniLM-L6-v2'):
+                      dimension: int = None, model_name: str = None):
         """
         Save a vector embedding to the database.
         
@@ -1150,9 +478,12 @@ class Storage:
             chunk_index: Chunk number (0 for first chunk)
             embedding_bytes: Serialized numpy array
             text_content: The text that was embedded
-            dimension: Embedding dimension
-            model_name: Model used to generate embedding
+            dimension: Embedding dimension (defaults to centralized config)
+            model_name: Model used to generate embedding (defaults to centralized config)
         """
+        # Use centralized config for defaults
+        dimension = dimension or model_config.EMBEDDING_DIMENSION
+        model_name = model_name or model_config.EMBEDDING_MODEL_NAME
         cursor = self.conn.cursor()
         
         cursor.execute("""
@@ -1222,238 +553,28 @@ class Storage:
         result = cursor.execute("SELECT COUNT(*) FROM embeddings").fetchone()
         return result[0] if result else 0
     
-    # ============================================================================
-    # PLANNING SYSTEM METHODS
-    # ============================================================================
-    
-    def save_user_plan(self, plan: 'UserPlan'):
-        """
-        Save or update a user plan.
-        
-        Args:
-            plan: UserPlan object to save
-        """
-        cursor = self.conn.cursor()
-        
-        cursor.execute("""
-            INSERT OR REPLACE INTO user_plans
-            (plan_id, topic, title, created_date, duration_weeks, status, 
-             progress_percentage, last_updated, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            plan.plan_id,
-            plan.topic,
-            plan.title,
-            plan.created_date,
-            plan.duration_weeks,
-            plan.status,
-            plan.progress_percentage,
-            plan.last_updated.isoformat() if plan.last_updated else None,
-            plan.notes
-        ))
-        
-        # Save plan items
-        for item in plan.items:
-            cursor.execute("""
-                INSERT OR REPLACE INTO plan_items
-                (plan_id, date, task, duration_minutes, completed, notes, 
-                 actual_duration, completion_time)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                plan.plan_id,
-                item.date,
-                item.task,
-                item.duration_minutes,
-                item.completed,
-                item.notes,
-                item.actual_duration,
-                item.completion_time.isoformat() if item.completion_time else None
-            ))
-        
-        self.conn.commit()
-    
-    def get_user_plan(self, plan_id: str) -> Optional['UserPlan']:
-        """
-        Retrieve a complete user plan with all items.
-        
-        Args:
-            plan_id: Plan identifier
-            
-        Returns:
-            UserPlan object or None if not found
-        """
-        cursor = self.conn.cursor()
-        
-        # Get plan metadata
-        plan_row = cursor.execute("""
-            SELECT * FROM user_plans WHERE plan_id = ?
-        """, (plan_id,)).fetchone()
-        
-        if not plan_row:
-            return None
-        
-        # Get plan items
-        item_rows = cursor.execute("""
-            SELECT * FROM plan_items WHERE plan_id = ?
-            ORDER BY date, task
-        """, (plan_id,)).fetchall()
-        
-        # Convert to PlanItem objects
-        items = []
-        for row in item_rows:
-            items.append(PlanItem(
-                plan_id=row['plan_id'],
-                date=row['date'],
-                task=row['task'],
-                duration_minutes=row['duration_minutes'],
-                completed=bool(row['completed']),
-                notes=row['notes'] or "",
-                actual_duration=row['actual_duration'],
-                completion_time=datetime.fromisoformat(row['completion_time']) if row['completion_time'] else None
-            ))
-        
-        return UserPlan(
-            plan_id=plan_row['plan_id'],
-            topic=plan_row['topic'],
-            title=plan_row['title'],
-            created_date=plan_row['created_date'],
-            duration_weeks=plan_row['duration_weeks'],
-            items=items,
-            status=plan_row['status'],
-            progress_percentage=plan_row['progress_percentage'],
-            last_updated=datetime.fromisoformat(plan_row['last_updated']) if plan_row['last_updated'] else None,
-            notes=plan_row['notes'] or ""
-        )
-    
-    def get_plans_for_date(self, date: str) -> List['PlanItem']:
-        """
-        Get all plan items for a specific date.
-        
-        Args:
-            date: Date string in YYYY-MM-DD format
-            
-        Returns:
-            List of PlanItem objects for that date
-        """
-        cursor = self.conn.cursor()
-        
-        rows = cursor.execute("""
-            SELECT * FROM plan_items 
-            WHERE date = ? AND completed = FALSE
-            ORDER BY task
-        """, (date,)).fetchall()
-        
-        items = []
-        for row in rows:
-            items.append(PlanItem(
-                plan_id=row['plan_id'],
-                date=row['date'],
-                task=row['task'],
-                duration_minutes=row['duration_minutes'],
-                completed=bool(row['completed']),
-                notes=row['notes'] or "",
-                actual_duration=row['actual_duration'],
-                completion_time=datetime.fromisoformat(row['completion_time']) if row['completion_time'] else None
-            ))
-        
-        return items
-    
-    def update_plan_item_completion(self, plan_id: str, date: str, task: str,
-                                   completed: bool, actual_duration: Optional[int] = None):
-        """
-        Update completion status of a plan item.
-        
-        Args:
-            plan_id: Plan identifier
-            date: Date string
-            task: Task description
-            completed: Completion status
-            actual_duration: Actual time spent (optional)
-        """
-        cursor = self.conn.cursor()
-        
-        update_data = {
-            'completed': completed,
-            'completion_time': datetime.now().isoformat() if completed else None
-        }
-        
-        if actual_duration is not None:
-            update_data['actual_duration'] = actual_duration
-        
-        # Build dynamic update query
-        set_clause = ', '.join(f"{key} = ?" for key in update_data.keys())
-        values = list(update_data.values()) + [plan_id, date, task]
-        
-        cursor.execute(f"""
-            UPDATE plan_items 
-            SET {set_clause}
-            WHERE plan_id = ? AND date = ? AND task = ?
-        """, values)
-        
-        # Update plan progress
-        self._update_plan_progress(plan_id)
-        
-        self.conn.commit()
-    
-    def get_active_plans(self) -> List['UserPlan']:
-        """
-        Get all active (non-completed) user plans.
-        
-        Returns:
-            List of active UserPlan objects
-        """
-        cursor = self.conn.cursor()
-        
-        plan_rows = cursor.execute("""
-            SELECT plan_id FROM user_plans 
-            WHERE status IN ('active', 'paused')
-            ORDER BY created_date DESC
-        """).fetchall()
-        
-        plans = []
-        for row in plan_rows:
-            plan = self.get_user_plan(row['plan_id'])
-            if plan:
-                plans.append(plan)
-        
-        return plans
-    
-    def _update_plan_progress(self, plan_id: str):
-        """
-        Update the progress percentage for a plan.
-        
-        Args:
-            plan_id: Plan identifier
-        """
-        cursor = self.conn.cursor()
-        
-        # Calculate progress
-        result = cursor.execute("""
-            SELECT 
-                COUNT(*) as total_items,
-                COUNT(CASE WHEN completed = 1 THEN 1 END) as completed_items
-            FROM plan_items 
-            WHERE plan_id = ?
-        """, (plan_id,)).fetchone()
-        
-        if result and result['total_items'] > 0:
-            progress = (result['completed_items'] / result['total_items']) * 100.0
-            
-            cursor.execute("""
-                UPDATE user_plans 
-                SET progress_percentage = ?, last_updated = ?
-                WHERE plan_id = ?
-            """, (progress, datetime.now().isoformat(), plan_id))
-    
-    # ============================================================================
-    # DEPRECATED: HMLR v1 SPAN MANAGEMENT (Moved to memory/deprecated/span_methods.py)
 
-    # Phase 11.5: Fact Store & Daily Ledger Query Methods
+    # ============================================================================
+    # Fact Store & Daily Ledger Query Methods
     # ========================================================================
+    
+    def get_turn_count(self, session_id: str) -> int:
+        """
+        Get the number of turns logged for a specific session.
+        
+        Args:
+            session_id: Unique session identifier
+            
+        Returns:
+            Number of turns in the session
+        """
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM metadata_staging WHERE session_id = ?", (session_id,))
+        return cursor.fetchone()[0]
     
     def query_fact_store(self, key: str) -> Optional[Dict[str, Any]]:
         """
-        Query fact_store for exact keyword match (Phase 11.5).
+        Query fact_store for exact keyword match 
         
         Args:
             key: The exact key to search for (e.g., "HMLR", "API_KEY")
@@ -1465,7 +586,7 @@ class Storage:
         cursor.execute("""
             SELECT fact_id, key, value, category, 
                    source_span_id, source_chunk_id, source_paragraph_id,
-                   source_block_id, evidence_snippet, created_at
+                   source_block_id, source_turn_id, evidence_snippet, created_at
             FROM fact_store
             WHERE key = ?
             ORDER BY created_at DESC
@@ -1485,8 +606,9 @@ class Storage:
             'source_chunk_id': row[5],
             'source_paragraph_id': row[6],
             'source_block_id': row[7],
-            'evidence_snippet': row[8],
-            'created_at': row[9]
+            'source_turn_id': row[8],
+            'evidence_snippet': row[9],
+            'created_at': row[10]
         }
     
     def get_facts_for_block(self, block_id: str) -> List[Dict[str, Any]]:
@@ -1506,7 +628,7 @@ class Storage:
         cursor.execute("""
             SELECT fact_id, key, value, category, 
                    source_span_id, source_chunk_id, source_paragraph_id,
-                   source_block_id, evidence_snippet, created_at
+                   source_block_id, source_turn_id, evidence_snippet, created_at
             FROM fact_store
             WHERE source_block_id = ?
             ORDER BY created_at DESC
@@ -1523,519 +645,124 @@ class Storage:
                 'source_chunk_id': row[5],
                 'source_paragraph_id': row[6],
                 'source_block_id': row[7],
-                'evidence_snippet': row[8],
-                'created_at': row[9]
+                'source_turn_id': row[8],
+                'evidence_snippet': row[9],
+                'created_at': row[10]
             })
         
         return facts
     
     def update_facts_block_id(self, turn_id: str, block_id: str) -> int:
-        """
-        Update all facts from a specific turn with the final block_id.
-        
-        Facts are initially created with block_id=None during extraction.
-        After the Governor assigns a block_id, this method updates all
-        facts from that turn to link them to the correct Bridge Block.
-        
-        Strategy:
-        - turn_id format: "turn_YYYYMMDD_HHMMSS"
-        - chunk_id format: "sent_YYYYMMDD_HHMMSS_randomhex" or "para_YYYYMMDD_HHMMSS_randomhex"
-        - Match on timestamp portion (chars after underscore in turn_id)
-        
-        Args:
-            turn_id: The turn identifier (e.g., "turn_20250115_143022")
-            block_id: The final Bridge Block ID assigned by the Governor
-        
-        Returns:
-            Number of facts updated
-        """
-        cursor = self.conn.cursor()
-        
-        # Extract timestamp from turn_id (e.g., "turn_20250115_143022" -> "20250115_143022")
-        timestamp = turn_id.replace("turn_", "")
-        
-        # Update facts where source_chunk_id contains the timestamp
-        # This matches both sent_TIMESTAMP_* and para_TIMESTAMP_*
-        cursor.execute("""
-            UPDATE fact_store
-            SET source_block_id = ?
-            WHERE source_chunk_id LIKE ?
-              AND (source_block_id IS NULL OR source_block_id = '')
-        """, (block_id, f"%{timestamp}%"))
-        
-        updated_count = cursor.rowcount
-        self.conn.commit()
-        
-        return updated_count
+        return LedgerStore.link_facts_to_block(self.conn, turn_id, block_id)
     
     def get_active_bridge_blocks(self) -> List[Dict[str, Any]]:
-        """
-        Retrieve all Bridge Blocks from today (hot path - Phase 11.5).
-        
-        Returns:
-            List of Bridge Block content_json from today
-        """
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT block_id, content_json, created_at, status, exit_reason
-            FROM daily_ledger
-            WHERE DATE(created_at) = DATE('now')
-            AND status IN ('ACTIVE', 'PAUSED')
-            ORDER BY created_at DESC
-        """)
-        
-        results = []
-        for row in cursor.fetchall():
-            try:
-                content = json.loads(row[1])
-                results.append({
-                    'block_id': row[0],
-                    'content': content,
-                    'created_at': row[2],
-                    'status': row[3],
-                    'exit_reason': row[4]
-                })
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse bridge block {row[0]}: {e}")
-                continue
-        
-        return results
+        return LedgerStore.get_active_bridge_blocks(self.conn)
     
     # ========================================================================
-    # PHASE 11.9.B: BRIDGE BLOCK STORAGE METHODS (Governor Integration)
+    # BRIDGE BLOCK STORAGE METHODS
     # ========================================================================
 
     def get_daily_ledger_metadata(self, day_id: str) -> List[Dict[str, Any]]:
-        """
-        Get metadata summaries of all Bridge Blocks for a specific day (CRITICAL for LLM routing).
-        Excludes heavy turns[] array to keep payload lightweight.
-        
-        Args:
-            day_id: The day ID in format YYYY-MM-DD
-        
-        Returns:
-            List of lightweight block metadata dictionaries with:
-            - block_id: Unique identifier
-            - topic_label: Human-readable topic name
-            - summary: Brief description of conversation
-            - keywords: List of topic keywords
-            - open_loops: Unresolved questions/tasks
-            - decisions: Key decisions made
-            - turn_count: Number of turns in block
-            - last_updated: Timestamp of last activity
-            - is_last_active: Boolean flag (only one block should be True)
-            - status: ACTIVE or PAUSED
-        """
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT block_id, content_json, updated_at, status
-            FROM daily_ledger
-            WHERE DATE(created_at) = DATE(?)
-            AND status IN ('ACTIVE', 'PAUSED')
-            ORDER BY updated_at DESC
-        """, (day_id,))
-        
-        metadata_list = []
-        for row in cursor.fetchall():
-            try:
-                content = json.loads(row[1])
-                
-                # Extract metadata only (exclude heavy turns[] array)
-                metadata = {
-                    'block_id': row[0],
-                    'topic_label': content.get('topic_label', 'Unknown Topic'),
-                    'summary': content.get('summary', ''),
-                    'keywords': content.get('keywords', []),
-                    'open_loops': content.get('open_loops', []),
-                    'decisions_made': content.get('decisions_made', []),
-                    'turn_count': len(content.get('turns', [])),
-                    'last_updated': row[2],
-                    'is_last_active': (row[3] == 'ACTIVE'),  # Only active block is "last active"
-                    'status': row[3]
-                }
-                metadata_list.append(metadata)
-                
-            except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Failed to extract metadata from block {row[0]}: {e}")
-                continue
-        
-        return metadata_list
+        return LedgerStore.get_daily_ledger_metadata(self.conn, day_id)
 
     def get_bridge_block_full(self, block_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Load complete Bridge Block including turns[] array (called AFTER routing decision).
-        
-        Args:
-            block_id: The unique block identifier
-        
-        Returns:
-            Full Bridge Block JSON dictionary including:
-            - All metadata fields
-            - turns[]: Complete conversation history (verbatim user/AI messages)
-            - chunk_ids: References to pre-chunked content
-            
-            Returns None if block not found.
-        """
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT content_json, status, created_at, updated_at
-            FROM daily_ledger
-            WHERE block_id = ?
-        """, (block_id,))
-        
-        row = cursor.fetchone()
-        if not row:
-            logger.warning(f"Bridge block {block_id} not found")
-            return None
-        
-        try:
-            content = json.loads(row[0])
-            content['_db_status'] = row[1]  # Include current DB status
-            content['_db_created_at'] = row[2]
-            content['_db_updated_at'] = row[3]
-            return content
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse bridge block {block_id}: {e}")
-            return None
+        return LedgerStore.get_bridge_block_full(self.conn, block_id)
 
-    def append_turn_to_block(self, block_id: str, turn: Dict[str, Any]) -> bool:
-        """
-        Append a new conversation turn to Bridge Block's turns[] array.
-        
-        Args:
-            block_id: The block to update
-            turn: Dictionary containing:
-                - turn_id: Unique turn identifier
-                - timestamp: ISO-8601 timestamp
-                - user_message: User's query (verbatim)
-                - ai_response: AI's response (verbatim)
-                - chunks: List of chunk IDs (for gardener)
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        cursor = self.conn.cursor()
-        
-        # Get current block content
-        cursor.execute("SELECT content_json FROM daily_ledger WHERE block_id = ?", (block_id,))
-        row = cursor.fetchone()
-        if not row:
-            logger.error(f"Cannot append turn: block {block_id} not found")
-            return False
-        
-        try:
-            content = json.loads(row[0])
-            
-            # Append turn to turns[] array
-            if 'turns' not in content:
-                content['turns'] = []
-            content['turns'].append(turn)
-            
-            # Update timestamp
-            content['last_updated'] = datetime.now().isoformat()
-            
-            # Save back to DB
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET content_json = ?, updated_at = ?
-                WHERE block_id = ?
-            """, (json.dumps(content), datetime.now().isoformat(), block_id))
-            
-            self.conn.commit()
-            logger.info(f"Appended turn {turn.get('turn_id')} to block {block_id}")
-            return True
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to append turn to block {block_id}: {e}")
-            return False
+    def save_to_gardened_memory(self, chunks: List[Dict[str, Any]], block_id: str, global_tags: List[str]) -> int:
+        return LedgerStore.save_to_gardened_memory(self.conn, chunks, block_id, global_tags)
+    
+    def append_turn_to_block(self, block_id: str, turn: Dict[str, Any], **kwargs) -> bool:
+        return LedgerStore.append_turn_to_block(self.conn, block_id, turn, **kwargs)
 
     def update_bridge_block_status(self, block_id: str, new_status: str, exit_reason: Optional[str] = None) -> bool:
-        """
-        Change Bridge Block status between ACTIVE ↔ PAUSED.
-        
-        Args:
-            block_id: The block to update
-            new_status: 'ACTIVE' or 'PAUSED'
-            exit_reason: Optional reason for pause (e.g., 'topic_shift', 'day_rollover')
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        if new_status not in ['ACTIVE', 'PAUSED', 'ARCHIVED']:
-            logger.error(f"Invalid status: {new_status}. Must be ACTIVE, PAUSED, or ARCHIVED")
-            return False
-        
-        cursor = self.conn.cursor()
-        
-        # Also update status in content_json for consistency
-        cursor.execute("SELECT content_json FROM daily_ledger WHERE block_id = ?", (block_id,))
-        row = cursor.fetchone()
-        if not row:
-            logger.warning(f"Block {block_id} not found for status update")
-            return False
-        
-        try:
-            content = json.loads(row[0])
-            content['status'] = new_status
-            if exit_reason:
-                content['exit_reason'] = exit_reason
-            
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET status = ?, exit_reason = ?, updated_at = ?, content_json = ?
-                WHERE block_id = ?
-            """, (new_status, exit_reason, datetime.now().isoformat(), json.dumps(content), block_id))
-            
-            self.conn.commit()
-            logger.info(f"Updated block {block_id} status: {new_status} (reason: {exit_reason})")
-            return True
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to update status for block {block_id}: {e}")
-            self.conn.rollback()
-            return False
+        return LedgerStore.update_bridge_block_status(self.conn, block_id, new_status, exit_reason)
 
     def update_last_active_flag(self, block_id: str) -> bool:
-        """
-        Set is_last_active flag for specified block and clear it for all others in the same day.
-        This ensures only ONE block is marked as last active per day.
-        
-        Args:
-            block_id: The block to mark as last active
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        cursor = self.conn.cursor()
-        
-        # Get the day from block's created_at timestamp
-        cursor.execute("SELECT created_at FROM daily_ledger WHERE block_id = ?", (block_id,))
-        row = cursor.fetchone()
-        if not row:
-            logger.error(f"Block {block_id} not found")
-            return False
-        
-        day_id = row[0][:10]  # Extract YYYY-MM-DD from ISO timestamp
-        
-        try:
-            # Clear all last_active flags for this day
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET status = 'PAUSED'
-                WHERE DATE(created_at) = DATE(?)
-                AND status = 'ACTIVE'
-                AND block_id != ?
-            """, (day_id, block_id))
-            
-            # Set the specified block as ACTIVE (which implies last_active)
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET status = 'ACTIVE', updated_at = ?
-                WHERE block_id = ?
-            """, (datetime.now().isoformat(), block_id))
-            
-            self.conn.commit()
-            logger.info(f"Block {block_id} marked as last active for day {day_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to update last_active flag: {e}")
-            self.conn.rollback()
-            return False
+        return LedgerStore.update_last_active_flag(self.conn, block_id)
 
     def generate_block_summary(self, block_id: str) -> Optional[str]:
-        """
-        Generate summary of Bridge Block when pausing (called before status change to PAUSED).
-        Uses LLM to create concise summary of conversation.
-        
-        Args:
-            block_id: The block to summarize
-        
-        Returns:
-            Generated summary string, or None if failed
-        
-        Note:
-            This is a placeholder for Phase 11.9. Full LLM integration happens in Governor.
-            For now, generates a simple summary from turns count and topic.
-        """
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT content_json FROM daily_ledger WHERE block_id = ?", (block_id,))
-        row = cursor.fetchone()
-        if not row:
-            logger.warning(f"Block {block_id} not found for summarization")
-            return None
-        
-        try:
-            content = json.loads(row[0])
-            topic = content.get('topic_label', 'Unknown Topic')
-            turn_count = len(content.get('turns', []))
-            keywords = content.get('keywords', [])
-            
-            # Simple summary (TODO: Replace with LLM call in Governor)
-            summary = f"{turn_count}-turn discussion about {topic}"
-            if keywords:
-                summary += f" (keywords: {', '.join(keywords[:3])})"
-            
-            # Update the block with generated summary
-            content['summary'] = summary
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET content_json = ?, updated_at = ?
-                WHERE block_id = ?
-            """, (json.dumps(content), datetime.now().isoformat(), block_id))
-            
-            self.conn.commit()
-            logger.info(f"Generated summary for block {block_id}: {summary}")
-            return summary
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to generate summary for block {block_id}: {e}")
-            return None
+        return LedgerStore.generate_block_summary(self.conn, block_id)
 
     def create_new_bridge_block(
         self,
         day_id: str,
         topic_label: str,
         keywords: List[str],
-        span_id: Optional[str] = None
+        span_id: Optional[str] = None,
+        **kwargs
     ) -> Optional[str]:
-        """
-        Create a new Bridge Block with LLM-suggested metadata.
-        
-        Args:
-            day_id: The day this block belongs to (YYYY-MM-DD)
-            topic_label: LLM-suggested topic name (e.g., "AWS Lambda Pricing")
-            keywords: Extracted keywords from query
-            span_id: Optional span reference (for lineage tracking)
-        
-        Returns:
-            block_id of created block, or None if failed
-        """
-        from uuid import uuid4
-        
-        block_id = f"bb_{day_id.replace('-', '')}_{uuid4().hex[:8]}"
-        timestamp = datetime.now().isoformat()
-        
-        # Create Bridge Block structure
-        content = {
-            'block_id': block_id,
-            'prev_block_id': None,  # TODO: Link to previous block if related
-            'span_id': span_id,
-            'timestamp': timestamp,
-            'status': 'ACTIVE',
-            'exit_reason': None,
-            'topic_label': topic_label,
-            'summary': '',  # Generated when paused
-            'user_affect': '',  # TODO: Extract from first turn
-            'bot_persona': '',  # TODO: Infer from context
-            'open_loops': [],
-            'decisions_made': [],
-            'active_variables': {},
-            'keywords': keywords,
-            'turns': []  # Empty initially, populated as conversation progresses
-        }
-        
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO daily_ledger (
-                    block_id, prev_block_id, span_id, content_json,
-                    created_at, updated_at, status, exit_reason, embedding_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                block_id,
-                None,  # prev_block_id
-                span_id,
-                json.dumps(content),
-                timestamp,
-                timestamp,
-                'ACTIVE',
-                None,
-                'PENDING'
-            ))
-            
-            self.conn.commit()
-            logger.info(f"Created new bridge block: {block_id} (topic: {topic_label})")
-            return block_id
-            
-        except Exception as e:
-            logger.error(f"Failed to create bridge block: {e}")
-            self.conn.rollback()
-            return None
+        return LedgerStore.create_new_bridge_block(self.conn, day_id, topic_label, keywords, span_id, **kwargs)
 
     def update_bridge_block_metadata(self, block_id: str, metadata: Dict[str, Any]) -> bool:
-        """
-        Update Bridge Block header metadata from LLM-generated JSON.
-        
-        This is called after the main LLM generates/updates block metadata.
-        Updates fields like topic_label, keywords, summary, open_loops, decisions_made.
-        
-        Args:
-            block_id: The block to update
-            metadata: Dictionary with metadata fields (from LLM JSON response)
-        
-        Returns:
-            True if successful, False otherwise
-        
-        Example metadata:
-            {
-                "topic_label": "AWS Lambda Pricing",
-                "keywords": ["aws", "lambda", "serverless", "pricing"],
-                "summary": "Discussion about Lambda pricing tiers and cost optimization",
-                "open_loops": ["Research reserved capacity pricing"],
-                "decisions_made": ["Use on-demand for initial deployment"]
-            }
-        """
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT content_json FROM daily_ledger WHERE block_id = ?", (block_id,))
-        row = cursor.fetchone()
-        
-        if not row:
-            logger.error(f"Block {block_id} not found for metadata update")
-            return False
-        
-        try:
-            content = json.loads(row[0])
-            
-            # Update fields present in metadata
-            if 'topic_label' in metadata:
-                content['topic_label'] = metadata['topic_label']
-            if 'keywords' in metadata:
-                content['keywords'] = metadata['keywords']
-            if 'summary' in metadata:
-                content['summary'] = metadata['summary']
-            if 'open_loops' in metadata:
-                content['open_loops'] = metadata['open_loops']
-            if 'decisions_made' in metadata:
-                content['decisions_made'] = metadata['decisions_made']
-            if 'user_affect' in metadata:
-                content['user_affect'] = metadata['user_affect']
-            if 'bot_persona' in metadata:
-                content['bot_persona'] = metadata['bot_persona']
-            
-            # Write back to DB
-            cursor.execute("""
-                UPDATE daily_ledger
-                SET content_json = ?, updated_at = ?
-                WHERE block_id = ?
-            """, (json.dumps(content), datetime.now().isoformat(), block_id))
-            
-            self.conn.commit()
-            
-            updated_fields = list(metadata.keys())
-            logger.info(f"Updated metadata for block {block_id}: {updated_fields}")
-            return True
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.error(f"Failed to update metadata for block {block_id}: {e}")
-            self.conn.rollback()
-            return False
+        return LedgerStore.update_bridge_block_metadata(self.conn, block_id, metadata)
+
+    # =========================================================================
+    # DOSSIER OPERATIONS
+    # =========================================================================
+    
+    def create_dossier(self, dossier_id: str, title: str, summary: str = "", search_summary: str = "") -> bool:
+        return DossierStore.create_dossier(self.conn, dossier_id, title, summary, search_summary)
+    
+    def get_dossier(self, dossier_id: str) -> Optional[Dict[str, Any]]:
+        return DossierStore.get_dossier(self.conn, dossier_id)
+    
+    def get_all_dossiers(self, status: str = 'active') -> List[Dict[str, Any]]:
+        return DossierStore.get_all_dossiers(self.conn, status)
+    
+    def add_fact_to_dossier(
+        self,
+        dossier_id: str,
+        fact_id: str,
+        fact_text: str,
+        source_block_id: str,
+        source_turn_id: str = None,
+        fact_type: str = None,
+        confidence: float = 1.0
+    ) -> bool:
+        return DossierStore.add_fact_to_dossier(
+            self.conn, dossier_id, fact_id, fact_text, source_block_id,
+            source_turn_id, fact_type, confidence
+        )
+    
+    def get_dossier_facts(self, dossier_id: str) -> List[Dict[str, Any]]:
+        return DossierStore.get_dossier_facts(self.conn, dossier_id)
+    
+    def update_dossier_summary(self, dossier_id: str, new_summary: str) -> bool:
+        return DossierStore.update_dossier_summary(self.conn, dossier_id, new_summary)
+    
+    def add_provenance_entry(
+        self,
+        dossier_id: str,
+        operation: str,
+        provenance_id: str,
+        source_block_id: str = None,
+        source_turn_id: str = None,
+        details: str = None
+    ) -> bool:
+        return DossierStore.add_provenance_entry(
+            self.conn, dossier_id, operation, provenance_id,
+            source_block_id, source_turn_id, details
+        )
+    
+    def get_dossier_history(self, dossier_id: str) -> List[Dict[str, Any]]:
+        return DossierStore.get_dossier_history(self.conn, dossier_id)
+    
+    # =========================================================================
+    # BLOCK METADATA OPERATIONS 
+    # =========================================================================
+    
+    def save_block_metadata(self, block_id: str, global_tags: List[str], 
+                           section_rules: List[Dict]) -> None:
+        return LedgerStore.save_block_metadata(self.conn, block_id, global_tags, section_rules)
+    
+    def get_block_metadata(self, block_id: str) -> Dict[str, Any]:
+        return LedgerStore.get_block_metadata(self.conn, block_id)
 
     def close(self):
         """Close database connection"""
         if self.conn:
             self.conn.close()
-            print("✅ Storage connection closed")
+            logger.info("Storage connection closed")
     
     def __enter__(self):
         """Context manager support"""
@@ -2044,95 +771,3 @@ class Storage:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager support"""
         self.close()
-
-
-# ============================================================================
-# TESTING
-# ============================================================================
-
-if __name__ == "__main__":
-    print("🧪 Storage Layer Test")
-    print("=" * 60)
-    
-    # Create test database
-    test_db = "test_memory.db"
-    if os.path.exists(test_db):
-        os.remove(test_db)
-    
-    with Storage(test_db) as storage:
-        # Test 1: Create days
-        print("\n1. Creating day nodes...")
-        today = create_day_id()
-        day = storage.create_day(today)
-        print(f"   ✅ Created day: {day.day_id}")
-        
-        # Test 2: Add session
-        print("\n2. Adding session to day...")
-        storage.add_session_to_day(today, "session_test_001")
-        print(f"   ✅ Session added")
-        
-        # Test 3: Add keywords
-        print("\n3. Adding keywords...")
-        keyword = Keyword(
-            keyword="rowing",
-            first_mentioned=datetime.now(),
-            last_mentioned=datetime.now(),
-            frequency=5,
-            turn_ids=[1, 3, 5, 7, 9]
-        )
-        storage.add_keyword(today, keyword)
-        print(f"   ✅ Keyword 'rowing' added (frequency: {keyword.frequency})")
-        
-        # Test 4: Save task
-        print("\n4. Creating task...")
-        try:
-            from hmlr.memory.models import create_task_id
-        except ImportError:
-            from models import create_task_id
-        
-        task = TaskState(
-            task_id=create_task_id(TaskType.RECURRING_PLAN),
-            task_type=TaskType.RECURRING_PLAN,
-            status=TaskStatus.ACTIVE,
-            created_date=today,
-            created_at=datetime.now(),
-            last_updated=datetime.now(),
-            task_title="30-day rowing challenge",
-            original_query="I want to row every day for 30 days",
-            total_steps=30,
-            completed_steps=7
-        )
-        storage.save_task(task)
-        storage.link_task_to_day(task.task_id, today, "created")
-        print(f"   ✅ Task saved: {task.task_title}")
-        print(f"   Progress: {task.progress_percentage():.1f}%")
-        
-        # Test 5: Search keywords
-        print("\n5. Searching keywords...")
-        results = storage.search_keywords(["rowing"])
-        print(f"   ✅ Found {len(results)} matches for 'rowing'")
-        
-        # Test 6: Get active tasks
-        print("\n6. Getting active tasks...")
-        active_tasks = storage.get_active_tasks()
-        print(f"   ✅ Found {len(active_tasks)} active tasks")
-        
-        # Test 7: Retrieve day with all data
-        print("\n7. Retrieving full day node...")
-        retrieved_day = storage.get_day(today)
-        print(f"   ✅ Day: {retrieved_day.day_id}")
-        print(f"   Sessions: {len(retrieved_day.session_ids)}")
-        print(f"   Keywords: {len(retrieved_day.keywords)}")
-        
-        # Test 8: Stats
-        print("\n8. Storage statistics...")
-        stats = storage.get_stats()
-        print(f"   ✅ Total days: {stats['total_days']}")
-        print(f"   ✅ Active tasks: {stats.get('tasks_by_status', {}).get('active', 0)}")
-        print(f"   ✅ Unique keywords: {stats['unique_keywords']}")
-    
-    print("\n" + "=" * 60)
-    print("🎉 All storage tests passed!")
-    print(f"Test database created: {test_db}")
-    print("(You can delete this file after inspection)")
-

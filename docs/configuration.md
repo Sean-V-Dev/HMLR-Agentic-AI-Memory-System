@@ -192,16 +192,7 @@ hmlr/memory/conversation_manager.py:78
 memory/conversation_manager.py:78 (original)
 ```
 
-### Persistence
 
-```python
-# Location: memory/sliding_window_persistence.py
-state_file: str = "memory/sliding_window_state.json"
-```
-
-**What it controls:** Where sliding window state is saved between sessions
-
----
 
 ## Bridge Block Settings
 

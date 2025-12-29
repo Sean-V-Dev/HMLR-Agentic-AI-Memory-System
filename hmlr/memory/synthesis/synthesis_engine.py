@@ -13,9 +13,12 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from collections import defaultdict, Counter
 import json
+import logging
 
 from hmlr.memory.models import DayNode, DaySynthesis, Keyword, Summary, Affect, ConversationTurn
 from hmlr.memory.storage import Storage
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -513,7 +516,7 @@ class SynthesisManager:
             # Update user profile
             self._update_user_profile_from_day(synthesis)
 
-            print(f"✅ Daily synthesis completed for {day_id}")
+            logger.info(f"Daily synthesis completed for {day_id}")
             return True
 
         return False
@@ -528,7 +531,7 @@ class SynthesisManager:
         # Update user profile with weekly patterns
         self._update_user_profile_from_week(week_synthesis)
 
-        print(f"✅ Weekly synthesis completed for week of {week_start.strftime('%Y-%m-%d')}")
+        logger.info(f"Weekly synthesis completed for week of {week_start.strftime('%Y-%m-%d')}")
         return True
 
     def trigger_monthly_synthesis(self, month_start: datetime) -> bool:
@@ -541,7 +544,7 @@ class SynthesisManager:
         # Update user profile with monthly insights
         self._update_user_profile_from_month(month_synthesis)
 
-        print(f"✅ Monthly synthesis completed for {month_start.strftime('%Y-%m')}")
+        logger.info(f"Monthly synthesis completed for {month_start.strftime('%Y-%m')}")
         return True
 
     def get_user_profile_context(self, max_tokens: int = 300) -> str:
@@ -607,12 +610,8 @@ class SynthesisManager:
 
     def _update_planning_profile_from_day(self, day_id: str):
         """Update planning profile from daily plan activity."""
-        # Get plans active on this day
-        day_plan_items = self.storage.get_plans_for_date(day_id)
-        if not day_plan_items:
-            return
-
-        # Group plan items by plan_id to analyze plan-level activity
+        # Planning system removed - this method is now a no-op
+        return
         plans_by_id = {}
         for item in day_plan_items:
             plan_id = getattr(item, 'plan_id', None)
@@ -674,12 +673,12 @@ class SynthesisManager:
     def _store_weekly_synthesis(self, synthesis: Dict):
         """Store weekly synthesis (placeholder - would need schema extension)."""
         # For now, just log it
-        print(f"Weekly synthesis stored: {synthesis['week_of']}")
+        logger.debug(f"Weekly synthesis stored: {synthesis['week_of']}")
 
     def _store_monthly_synthesis(self, synthesis: Dict):
         """Store monthly synthesis (placeholder - would need schema extension)."""
         # For now, just log it
-        print(f"Monthly synthesis stored: {synthesis['month_of']}")
+        logger.debug(f"Monthly synthesis stored: {synthesis['month_of']}")
 
     def get_synthesis_stats(self) -> Dict:
         """Get statistics about synthesis operations."""

@@ -58,7 +58,7 @@ class ChunkStorage:
                     json.dumps(chunk.lexical_filters),  # Store as JSON array
                     chunk.span_id,
                     chunk.turn_id,
-                    None,  # block_id assigned later (Phase 11)
+                    None,  
                     chunk.metadata.get('created_at', 'now'),
                     chunk.token_count,
                     json.dumps(chunk.metadata)
@@ -203,7 +203,7 @@ class ChunkStorage:
     
     def update_chunk_block_id(self, chunk_id: str, block_id: str) -> None:
         """
-        Link a chunk to a bridge block (called during Phase 11).
+        Link a chunk to a bridge block 
         
         Args:
             chunk_id: Chunk identifier

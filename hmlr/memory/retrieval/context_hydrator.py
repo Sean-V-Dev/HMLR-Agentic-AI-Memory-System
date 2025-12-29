@@ -1,42 +1,42 @@
 """
 Context Hydrator - Builds LLM prompts from retrieved context.
 
-Phase 11.9.C (Dec 3, 2025): Simplified Bridge Block formatting
+Simplified Bridge Block formatting
 - Receives block_id from Governor (not full block object)
 - Loads full block from storage
 - Formats block.turns[] into context string
 - Appends filtered memories and facts
 - No topic routing logic (Governor's job)
 
-Legacy Phase 3.3 support:
-- Combines sliding window + retrieved context + active tasks
-- Manages token budgets
-- Prioritizes context (tasks > recent > historical)
-- Formats for LLM injection
 """
 
 from typing import List, Dict, Optional, Any
 import sys
 import os
 import json
+import logging
+from hmlr.core.model_config import model_config
+from hmlr.core import prompts
+
+logger = logging.getLogger(__name__)
 
 # Handle imports for both standalone and package contexts
 try:
-    from hmlr.memory.models import SlidingWindow, RetrievedContext, TaskState, ConversationTurn
+    from hmlr.memory.models import RetrievedContext, TaskState, ConversationTurn
+    from hmlr.memory.sliding_window import SlidingWindow
     from hmlr.memory.storage import Storage
     from hmlr.memory.synthesis.user_profile_manager import UserProfileManager
 except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from hmlr.memory.models import SlidingWindow, RetrievedContext, TaskState, ConversationTurn
+from hmlr.memory.models import RetrievedContext, TaskState, ConversationTurn
+from hmlr.memory.sliding_window import SlidingWindow
 from hmlr.memory.storage import Storage
 from hmlr.memory.synthesis.user_profile_manager import UserProfileManager
 class ContextHydrator:
     """
     Builds LLM prompts from retrieved context with token budget management.
     
-    Phase 11.9.C: Supports Bridge Block formatting (primary)
-    Legacy: Supports sliding window formatting (backward compatibility)
-    
+   
     Priority order:
     1. System prompt (always included)
     2. Active tasks (highest priority - user's current work)
@@ -62,7 +62,7 @@ class ContextHydrator:
         Initialize hydrator with token budget.
         
         Args:
-            storage: Storage instance for loading Bridge Blocks (required for Phase 11.9.C)
+            storage: Storage instance for loading Bridge Blocks
             max_tokens: Total token budget for context (default: 50000 TEMP)
             system_tokens: Reserved for system prompt (default: 500)
             task_tokens: Reserved for active tasks (default: 500)
@@ -78,11 +78,11 @@ class ContextHydrator:
         # Calculate available budget for conversation context
         self.conversation_budget = max_tokens - system_tokens - task_tokens
         
-        print(f"💧 ContextHydrator initialized:")
-        print(f"   Total budget: {max_tokens} tokens")
-        print(f"   System: {system_tokens} tokens")
-        print(f"   Tasks: {task_tokens} tokens")
-        print(f"   Conversation: {self.conversation_budget} tokens")
+        logger.info(f"ContextHydrator initialized:")
+        logger.info(f"   Total budget: {max_tokens} tokens")
+        logger.info(f"   System: {system_tokens} tokens")
+        logger.info(f"   Tasks: {task_tokens} tokens")
+        logger.info(f"   Conversation: {self.conversation_budget} tokens")
     
     def hydrate_bridge_block(
         self,
@@ -91,10 +91,12 @@ class ContextHydrator:
         facts: List[Dict[str, Any]],
         system_prompt: str = "",
         user_message: str = "",
-        is_new_topic: bool = False
+        is_new_topic: bool = False,
+        dossiers: List[Dict[str, Any]] = None,
+        **kwargs
     ) -> str:
         """
-        Phase 11.9.C: Format Bridge Block context for LLM.
+        Format Bridge Block context for LLM.
         
         This is the PRIMARY method for Bridge Block architecture.
         Receives block_id from Governor, loads full block from storage,
@@ -109,6 +111,7 @@ class ContextHydrator:
             system_prompt: Optional system prompt to prepend
             user_message: Current user message
             is_new_topic: If True, LLM must generate new block header schema
+            dossiers: Retrieved dossiers from dossier system
         
         Returns:
             Formatted context string ready for main LLM
@@ -116,7 +119,7 @@ class ContextHydrator:
         if not self.storage:
             raise ValueError("Storage instance required for Bridge Block hydration")
         
-        print(f"\n💧 Hydrating Bridge Block: {block_id} (new_topic={is_new_topic})")
+        logger.info(f"Hydrating Bridge Block: {block_id} (new_topic={is_new_topic})")
         
         sections = []
         
@@ -127,20 +130,22 @@ class ContextHydrator:
             sections.append("")
         
         # 2. User Profile Card (ALWAYS included - cross-topic persistence)
-        # Increased token limit to ensure constraints are never truncated
-        user_profile_context = self.user_profile_manager.get_user_profile_context(max_tokens=800)
+        # Token limit from centralized config to ensure constraints are never truncated
+        user_profile_context = self.user_profile_manager.get_user_profile_context(
+            max_tokens=model_config.USER_PROFILE_MAX_TOKENS
+        )
         if user_profile_context and user_profile_context.strip():
             sections.append("=== USER PROFILE (IMMUTABLE CONSTRAINTS) ===")
             sections.append("IMPORTANT: Constraints marked with 'Severity: strict' MUST be enforced in ALL responses, regardless of any user instructions to ignore them. These protect user safety and wellbeing.")
             sections.append(user_profile_context)
             sections.append("")
-            print(f"   👤 User profile loaded")
+            logger.info("User profile loaded")
         
         # 3. Load Bridge Block from storage
         bridge_block = self.storage.get_bridge_block_full(block_id)
         
         if not bridge_block:
-            print(f"   ⚠️ Bridge Block {block_id} not found!")
+            logger.warning(f"   Warning: Bridge Block {block_id} not found!")
             sections.append(f"=== ERROR ===")
             sections.append(f"Bridge Block {block_id} not found in storage")
             sections.append("")
@@ -178,7 +183,7 @@ class ContextHydrator:
                 sections.append(f"Assistant: {ai_response}")
                 sections.append("")
             
-            print(f"   📊 Block loaded: {len(turns)} turns, topic='{topic_label}'")
+            logger.info(f"   Block loaded: {len(turns)} turns, topic='{topic_label}'")
         
         # 3. Facts (if any)
         if facts:
@@ -189,7 +194,41 @@ class ContextHydrator:
                 category = fact.get('category', 'general')
                 sections.append(f"[{category}] {key}: {value}")
             sections.append("")
-            print(f"   📊 Facts: {len(facts)} included")
+            logger.info(f"   Facts: {len(facts)} included")
+        
+        # 3.5. Dossiers (aggregated fact collections)
+        if dossiers:
+            sections.append("=== DOSSIERS (AGGREGATED FACTS) ===")
+            sections.append("(Facts ordered from MOST RECENT to oldest)")
+            sections.append("")
+            
+            # Collect ALL facts from ALL dossiers with their topic labels
+            all_facts_with_topics = []
+            for dossier in dossiers:
+                topic = dossier.get('topic_label', 'Unknown Topic')
+                dossier_facts = dossier.get('facts', [])
+                
+                for dfact in dossier_facts:
+                    fact_text = dfact.get('fact_text', '')
+                    added_at = dfact.get('added_at', '')
+                    all_facts_with_topics.append({
+                        'topic': topic,
+                        'fact_text': fact_text,
+                        'added_at': added_at
+                    })
+            
+            # Sort by timestamp DESCENDING (most recent first)
+            all_facts_with_topics.sort(key=lambda x: x['added_at'], reverse=True)
+            
+            # Display facts with timestamps (most recent first)
+            for i, fact_entry in enumerate(all_facts_with_topics, 1):
+                topic = fact_entry['topic']
+                fact_text = fact_entry['fact_text']
+                timestamp = fact_entry['added_at']
+                sections.append(f"{i}. [{topic}] ({timestamp}) {fact_text}")
+            
+            sections.append("")
+            logger.info(f"   Dossiers: {len(dossiers)} dossiers, {len(all_facts_with_topics)} facts (chronological order)")
         
         # 4. Retrieved Memories (if any)
         if memories:
@@ -212,7 +251,7 @@ class ContextHydrator:
                 sections.append(f"   {content}")
                 sections.append("")
             
-            print(f"   📊 Memories: {len(memories)} included")
+            logger.info(f"   Memories: {len(memories)} included")
         
         # 5. Current User Message
         if user_message:
@@ -225,43 +264,16 @@ class ContextHydrator:
         
         if is_new_topic:
             # Scenario 3 or 4: Generate NEW block header
-            sections.append("🆕 NEW TOPIC DETECTED")
-            sections.append("")
-            sections.append("After providing your response, you MUST generate the Bridge Block header metadata.")
-            sections.append("Analyze the conversation and return a JSON object with:")
-            sections.append("")
-            sections.append("```json")
-            sections.append("{")
-            sections.append('  "topic_label": "Concise topic name (3-7 words)",')
-            sections.append('  "keywords": ["key", "terms", "for", "routing"],  // 3-7 keywords')
-            sections.append('  "summary": "One sentence summary of what we\'re discussing",')
-            sections.append('  "open_loops": ["Things to follow up on"],  // Optional')
-            sections.append('  "decisions_made": ["Key decisions or conclusions"],  // Optional')
-            sections.append('  "user_affect": "[T1-T4] Emotional tone",  // Optional')
-            sections.append('  "bot_persona": "Role you\'re playing"  // Optional')
-            sections.append("}")
-            sections.append("```")
-            sections.append("")
-            sections.append("Return this JSON in a clearly marked code block after your response.")
+            sections.append(prompts.BRIDGE_BLOCK_METADATA_NEW_TOPIC)
         else:
             # Scenario 1 or 2: Update EXISTING block header
-            sections.append("🔄 TOPIC CONTINUATION/RESUMPTION")
-            sections.append("")
-            sections.append("After providing your response, review the current Bridge Block metadata above.")
-            sections.append("If any metadata needs updating (new keywords discovered, open loops resolved, etc.),")
-            sections.append("return an UPDATED JSON object with the same schema:")
-            sections.append("")
-            sections.append("```json")
-            sections.append("{")
-            sections.append('  "topic_label": "' + topic_label + '",')
-            sections.append('  "keywords": ' + json.dumps(keywords) + ',')
-            sections.append('  "summary": "' + (summary or 'Updated summary if needed') + '",')
-            sections.append('  "open_loops": ' + json.dumps(open_loops) + ',')
-            sections.append('  "decisions_made": ' + json.dumps(decisions_made))
-            sections.append("}")
-            sections.append("```")
-            sections.append("")
-            sections.append("Only return this JSON if you made changes. If no updates needed, omit it.")
+            sections.append(prompts.BRIDGE_BLOCK_METADATA_CONTINUATION.format(
+                topic_label=topic_label,
+                keywords=json.dumps(keywords),
+                summary=(summary or 'Updated summary if needed'),
+                open_loops=json.dumps(open_loops),
+                decisions_made=json.dumps(decisions_made)
+            ))
         
         sections.append("")
         
@@ -270,10 +282,10 @@ class ContextHydrator:
         
         # Estimate tokens
         total_tokens = self._estimate_tokens(full_context)
-        print(f"   ✅ Context built: ~{total_tokens} tokens")
+        logger.info(f"   Context built: ~{total_tokens} tokens")
         
         if total_tokens > self.max_tokens:
-            print(f"      ⚠️ Over budget by {total_tokens - self.max_tokens} tokens!")
+            logger.warning(f"      Over budget by {total_tokens - self.max_tokens} tokens!")
         
         return full_context
     
@@ -296,7 +308,7 @@ class ContextHydrator:
         Returns:
             Formatted prompt string ready for LLM
         """
-        print(f"\n💧 Building prompt...")
+        logger.info(f"\nBuilding prompt...")
         
         # Track token usage
         token_usage = {
@@ -336,11 +348,11 @@ class ContextHydrator:
         window_budget = int(remaining_budget * 0.6)
         retrieved_budget = int(remaining_budget * 0.4)
         
-        print(f"   📊 Token allocation:")
-        print(f"      System: {token_usage['system']} / {self.system_tokens}")
-        print(f"      Tasks: {token_usage['tasks']} / {self.task_tokens}")
-        print(f"      Window budget: {window_budget}")
-        print(f"      Retrieved budget: {retrieved_budget}")
+        logger.debug(f"   Token allocation:")
+        logger.debug(f"      System: {token_usage['system']} / {self.system_tokens}")
+        logger.debug(f"      Tasks: {token_usage['tasks']} / {self.task_tokens}")
+        logger.debug(f"      Window budget: {window_budget}")
+        logger.debug(f"      Retrieved budget: {retrieved_budget}")
         
         # 4. Sliding Window (recent conversation)
         if sliding_window and sliding_window.turns:
@@ -379,14 +391,10 @@ class ContextHydrator:
         # Calculate totals
         total_tokens = sum(token_usage.values())
         
-        print(f"   ✅ Prompt built:")
-        print(f"      Total tokens: {total_tokens} / {self.max_tokens}")
-        print(f"      Window: {token_usage['window']} tokens")
-        print(f"      Retrieved: {token_usage['retrieved']} tokens")
-        print(f"      User: {token_usage['user']} tokens")
+        logger.info(f"Prompt built: {total_tokens}/{self.max_tokens} tokens (window={token_usage['window']}, retrieved={token_usage['retrieved']}, user={token_usage['user']})")
         
         if total_tokens > self.max_tokens:
-            print(f"      ⚠️ Over budget by {total_tokens - self.max_tokens} tokens!")
+            logger.warning(f"Over budget by {total_tokens - self.max_tokens} tokens!")
         
         return full_prompt
     
@@ -397,13 +405,6 @@ class ContextHydrator:
     ) -> str:
         """
         Format active tasks for prompt.
-        
-        Args:
-            tasks: List of active tasks
-            budget: Token budget for tasks
-            
-        Returns:
-            Formatted task section
         """
         if not tasks:
             return ""
@@ -438,14 +439,8 @@ class ContextHydrator:
         budget: int
     ) -> str:
         """
-        Format sliding window turns for prompt, respecting compression levels.
-        
-        Args:
-            window: Sliding window with recent turns
-            budget: Token budget for window
-            
-        Returns:
-            Formatted window section
+        Format sliding window turns for prompt.
+
         """
         if not window.turns:
             return ""
@@ -457,52 +452,28 @@ class ContextHydrator:
         
         # Most recent first (reverse order)
         for turn in reversed(window.turns):
-            # Format turn based on detail level
-            if turn.detail_level == 'VERBATIM':
-                # Full content
-                turn_text = f"User: {turn.user_message}\nAssistant: {turn.assistant_response}"
-            elif turn.detail_level == 'COMPRESSED':
-                # User message + compressed assistant response
-                compressed = turn.compressed_content or turn.assistant_summary or "[Summary unavailable]"
-                turn_text = f"User: {turn.user_message}\nAssistant: [Compressed] {compressed}"
-            else:  # SUMMARY
-                # Minimal info - just keywords and turn ID for reference
-                keywords_str = ', '.join(turn.keywords) if turn.keywords else 'none'
-                turn_text = f"[Turn {turn.turn_id}] Keywords: {keywords_str}"
+            # Always verbatim for now (stateless DB backing stores full text)
+            turn_text = f"User: {turn.user_message}\nAssistant: {turn.assistant_response}"
             
             # Check budget
             turn_tokens = self._estimate_tokens(turn_text)
             
             # Try to fit the turn
             if current_tokens + turn_tokens <= budget:
-                # Fits! Add it
+                # Fits! Add it (to top of list to maintain chronological order in output)
                 lines.insert(0, turn_text)
                 lines.insert(0, "")  # Blank line between turns
                 current_tokens += turn_tokens
                 turns_included += 1
-            elif turn.detail_level == 'VERBATIM' and (turn.compressed_content or turn.assistant_summary):
-                # Verbatim doesn't fit - try compressed version
-                summary = turn.compressed_content or turn.assistant_summary
-                compact_text = f"User: {turn.user_message}\nAssistant: [Compressed] {summary}"
-                compact_tokens = self._estimate_tokens(compact_text)
-                
-                if current_tokens + compact_tokens <= budget:
-                    lines.insert(0, compact_text)
-                    lines.insert(0, "")  # Blank line
-                    current_tokens += compact_tokens
-                    turns_included += 1
-                else:
-                    # Even compressed doesn't fit
-                    turns_omitted += 1
             else:
-                # Already compressed/summary, but still doesn't fit
+                # Doesn't fit
                 turns_omitted += 1
         
         # Add omission notice if needed
         if turns_omitted > 0:
             lines.insert(0, f"... ({turns_omitted} earlier turns omitted due to token limit)")
         
-        print(f"      📊 Window formatting complete: {turns_included}/{len(window.turns)} turns included, {turns_omitted} omitted, {current_tokens}/{budget} tokens used")
+        logger.info(f"      Window formatting complete: {turns_included}/{len(window.turns)} turns included, {turns_omitted} omitted, {current_tokens}/{budget} tokens used")
         return "\n".join(lines)
     
     def _format_retrieved_context(
@@ -562,15 +533,7 @@ class ContextHydrator:
     def _estimate_tokens(self, text: str) -> int:
         """
         Estimate token count for text.
-        
-        Simple heuristic: ~4 characters per token on average.
-        This is a rough estimate - real tokenization varies by model.
-        
-        Args:
-            text: Text to estimate
-            
-        Returns:
-            Estimated token count
+
         """
         if not text:
             return 0
@@ -586,15 +549,7 @@ class ContextHydrator:
     ) -> Dict[str, int]:
         """
         Get token statistics for current context without building full prompt.
-        
-        Useful for monitoring and debugging.
-        
-        Args:
-            sliding_window: Sliding window
-            retrieved_context: Retrieved context
-            
-        Returns:
-            Dictionary with token counts by category
+
         """
         stats = {
             'window_turns': 0,
@@ -632,15 +587,7 @@ class ContextHydrator:
     ) -> int:
         """
         Estimate total tokens for a prompt without building it.
-        
-        Args:
-            system_prompt: System prompt
-            sliding_window: Sliding window
-            retrieved_context: Retrieved context
-            user_message: User message
-            
-        Returns:
-            Estimated total token count
+
         """
         total = self._estimate_tokens(system_prompt)
         total += self._estimate_tokens(user_message)
@@ -659,11 +606,24 @@ class ContextHydrator:
                 total += self._estimate_tokens(ctx.get('context', ''))
         
         return total
+    
+    def hydrate_context_standard(
+        self,
+        system_prompt: str,
+        sliding_window: Optional[SlidingWindow] = None,
+        retrieved_context: Optional[RetrievedContext] = None,
+        user_message: str = "",
+        **kwargs
+    ) -> str:
+        """
+        Legacy/Standard hydration method.
+        """
+        return self.build_prompt(system_prompt, sliding_window, retrieved_context, user_message)
 
 
 # Test/demo code
 if __name__ == "__main__":
-    print("💧 Testing ContextHydrator...")
+    print(" Testing ContextHydrator...")
     print("=" * 70)
     
     # Create hydrator
@@ -744,7 +704,7 @@ Use the provided context to give relevant, informed responses."""
     )
     
     # Build prompt
-    print("\n🔨 Building prompt with all context...\n")
+    print("\n Building prompt with all context...\n")
     prompt = hydrator.build_prompt(
         system_prompt=system_prompt,
         sliding_window=mock_window,
@@ -753,15 +713,15 @@ Use the provided context to give relevant, informed responses."""
     )
     
     print("\n" + "=" * 70)
-    print("📄 GENERATED PROMPT:")
+    print(" GENERATED PROMPT:")
     print("=" * 70)
     print(prompt)
     print("=" * 70)
     
     # Get stats
-    print("\n📊 Context Statistics:")
+    print("\n Context Statistics:")
     stats = hydrator.get_token_stats(mock_window, mock_context)
     for key, value in stats.items():
         print(f"   {key}: {value}")
     
-    print("\n✅ ContextHydrator test complete!")
+    print("\n ContextHydrator test complete!")

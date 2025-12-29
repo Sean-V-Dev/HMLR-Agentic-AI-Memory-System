@@ -33,7 +33,7 @@ else:
 
 setup(
     name="hmlr",
-    version="0.1.0",
+    version="0.1.2",
     author="Sean-V-Dev",
     description="Hierarchical Memory with Lattice Retrieval - AI agent memory system",
     long_description=long_description,
@@ -50,7 +50,6 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

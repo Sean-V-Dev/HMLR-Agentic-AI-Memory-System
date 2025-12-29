@@ -13,9 +13,21 @@ class UserProfileManager:
     Handles thread-safe reading and writing of the glossary.
     """
     
-    def __init__(self, profile_path: str = "config/user_profile_lite.json"):
+    def __init__(self, profile_path: str = None):
+        # Default to package-relative path
+        if profile_path is None:
+            # Resolve from hmlr/config/ relative to this file
+            default_path = Path(__file__).parent.parent.parent / "config" / "user_profile_lite.json"
+            profile_path = str(default_path)
+        
         # Use absolute path to avoid CWD issues
         import os
+        
+        # Check if environment variable overrides the default path
+        env_profile_path = os.environ.get('USER_PROFILE_PATH')
+        if env_profile_path:
+            profile_path = env_profile_path
+        
         if not os.path.isabs(profile_path):
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             profile_path = os.path.join(base_dir, profile_path)
@@ -40,8 +52,18 @@ class UserProfileManager:
                 "constraints": []
             }
         }
-        with open(self.profile_path, 'w', encoding='utf-8') as f:
-            json.dump(default_data, f, indent=2)
+        # Use atomic write pattern
+        import os
+        temp_path = f"{self.profile_path}.tmp"
+        try:
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(default_data, f, indent=2)
+            os.replace(temp_path, self.profile_path)
+        except Exception as e:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            logger.error(f"Failed to create default profile: {e}", exc_info=True)
+            raise
 
     def get_user_profile_context(self, max_tokens: int = 300) -> str:
         """
@@ -66,12 +88,21 @@ class UserProfileManager:
                         desc = c.get('description', c.get('value', ''))
                         constraint_type = c.get('type', '')
                         severity = c.get('severity', '')
+                        updated = c.get('updated', '')
                         
-                        # Format with type and severity if available
-                        if constraint_type and severity:
-                            context_str += f"  - {c['key']}: {desc} [Type: {constraint_type}, Severity: {severity}]\n"
-                        elif constraint_type:
-                            context_str += f"  - {c['key']}: {desc} [Type: {constraint_type}]\n"
+                        # Build metadata string
+                        metadata_parts = []
+                        if constraint_type:
+                            metadata_parts.append(f"Type: {constraint_type}")
+                        if severity:
+                            metadata_parts.append(f"Severity: {severity}")
+                        if updated:
+                            metadata_parts.append(f"Updated: {updated}")
+                        
+                        # Format with metadata if available
+                        if metadata_parts:
+                            metadata_str = ", ".join(metadata_parts)
+                            context_str += f"  - {c['key']}: {desc} [{metadata_str}]\n"
                         else:
                             context_str += f"  - {c['key']}: {desc}\n"
                 
@@ -82,7 +113,24 @@ class UserProfileManager:
                         desc = p.get('description', '')
                         domain = p.get('domain', '')
                         status = p.get('status', '')
-                        context_str += f"  - {p['key']}: {desc} ({domain}) [{status}]\n"
+                        updated = p.get('updated', '')
+                        
+                        # Build metadata string
+                        metadata_parts = []
+                        if status:
+                            metadata_parts.append(status)
+                        if updated:
+                            metadata_parts.append(f"Updated: {updated}")
+                        
+                        metadata_str = ", ".join(metadata_parts) if metadata_parts else status
+                        if domain and metadata_str:
+                            context_str += f"  - {p['key']}: {desc} ({domain}) [{metadata_str}]\n"
+                        elif domain:
+                            context_str += f"  - {p['key']}: {desc} ({domain})\n"
+                        elif metadata_str:
+                            context_str += f"  - {p['key']}: {desc} [{metadata_str}]\n"
+                        else:
+                            context_str += f"  - {p['key']}: {desc}\n"
                 
                 # Entities (can be truncated if needed)
                 if glossary.get('entities'):
@@ -90,7 +138,20 @@ class UserProfileManager:
                     for e in glossary['entities']:
                         desc = e.get('description', '')
                         etype = e.get('type', '')
-                        context_str += f"  - {e['key']}: {desc} ({etype})\n"
+                        updated = e.get('updated', '')
+                        
+                        # Build metadata string
+                        metadata_parts = []
+                        if etype:
+                            metadata_parts.append(etype)
+                        if updated:
+                            metadata_parts.append(f"Updated: {updated}")
+                        
+                        if metadata_parts:
+                            metadata_str = ", ".join(metadata_parts)
+                            context_str += f"  - {e['key']}: {desc} ({metadata_str})\n"
+                        else:
+                            context_str += f"  - {e['key']}: {desc}\n"
                 
                 context_str += "</user_glossary>"
                 
@@ -152,21 +213,34 @@ class UserProfileManager:
                         # For now, let's merge attributes.
                         for k, v in attributes.items():
                             existing_item[k] = v
+                        # Always update timestamp when modifying an entry
+                        existing_item['updated'] = attributes.get('updated', datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
                         logger.info(f"Updated {category} '{key}' in user profile.")
                         changes_made = True
                     else:
                         # Create new
                         new_item = {"key": key}
                         new_item.update(attributes)
+                        # Ensure updated timestamp is set
+                        if 'updated' not in new_item:
+                            new_item['updated'] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
                         glossary[category].append(new_item)
                         logger.info(f"Created new {category} '{key}' in user profile.")
                         changes_made = True
                 
                 if changes_made:
                     data['last_updated'] = datetime.now().isoformat()
-                    # Write back
-                    with open(self.profile_path, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, indent=2)
+                    # Write back using atomic write pattern
+                    import os
+                    temp_path = f"{self.profile_path}.tmp"
+                    try:
+                        with open(temp_path, 'w', encoding='utf-8') as f:
+                            json.dump(data, f, indent=2)
+                        os.replace(temp_path, self.profile_path)
+                    except Exception as e:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                        raise e
                         
             except Exception as e:
-                logger.error(f"Error updating user profile: {e}")
+                logger.error(f"Error updating user profile: {e}", exc_info=True)

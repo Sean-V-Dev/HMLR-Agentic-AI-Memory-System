@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-12-24T15:35:53.213631",
+  "glossary": {
+    "constraints": [
+      {
+        "key": "dietary_vegetarian",
+        "type": "Dietary",
+        "description": "User is strictly vegetarian",
+        "updated": "12/24/2025 15:35:51"
+      }
+    ],
+    "identity": [],
+    "preferences": []
+  }
+}

@@ -4,6 +4,7 @@ include requirements-core.txt
 include requirements-dev.txt
 recursive-include hmlr/config *.json *.template
 recursive-include hmlr *.py
+recursive-include docs *.md
 exclude tests/*
 exclude examples/*
 exclude junk_drawer/*
