@@ -145,7 +145,8 @@ screenshot of langsmith  RAGAS testing verification:
 
 **New Memory test coming soon:**
 -Million token haystack
-    As part of the haystack it will include:
+    
+  As part of the haystack it will include:
     Hydra Hard Mode
     Simple recall Hard Mode
     Poison Pill Hallucination testing
@@ -153,8 +154,9 @@ screenshot of langsmith  RAGAS testing verification:
     Real World Document testing (A huge document with global rules, local constraints, updates, and temporal conflicts scattered throughout - The document will be 75 - 100k tokens) 
     A new hard mode test that makes the original Hydra9 Hard Mode test look trivial by comparison.
     The Battery Test:
-        Goal:
-        Stress all failure modes at once:
+        
+   Goal:
+    Stress all failure modes at once:
         multi-hop linking
         temporal reasoning (ordering + intervals)
         policy revocation and “current rule”
@@ -163,22 +165,22 @@ screenshot of langsmith  RAGAS testing verification:
         recency bias defense
         zero ambiguity scoring (explicit ground truth)
 
-        Core design for battery test:
+   Core design for battery test:
         You run a sequence of independent questions back-to-back against the same 1M-token memory, where:
         Each question targets a different deep thread buried in memory.
         Each has a single correct answer that is explicitly stated somewhere in memory.
         
-        The sequence is constructed so that:
-        Some recent turns contain highly tempting distractor, but the correct answers come from older, correct, explicit statements.
+   The sequence is constructed so that:
+        Some recent turns contain highly tempting distractors, but the correct answers come from older, correct, explicit statements.
         
-        Fail condition:
+   Fail condition:
         Any single wrong answer = fail for that run.
     
-    Answers will have ambiguous interpretations, which relies on prompt engineering so the LLM does or does not understand the question. All questions will be explicit to any given question, so there is a single ground truth. The test will *only* test for true memory recall.
+   Answers will have ambiguous interpretations, which relies on prompt engineering so the LLM does or does not understand the question. All questions will be explicit to any given question, so there is a single ground truth. The test will *only* test for true memory recall.
 
-    All tests will be located inside of the million token haystack so that brute force retrieval is near impossible even for top-tier models.
+   All tests will be located inside of the million token haystack so that brute force retrieval is near impossible even for top-tier models.
 
-    You will only need to ingest the haystack once, in whatever way a memory system chooses to, but each individual question my be run against that ingested data 50+ times to get statistically significant results.
+   You will only need to ingest the haystack once, in whatever way a memory system chooses to, but each individual question my be run against that ingested data 50+ times to get statistically significant results.
 
 
 
