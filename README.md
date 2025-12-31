@@ -66,21 +66,6 @@ Each turn is processed in a fresh session:
 -No prior turns are ever visible at inference time to the LLM. Pure isolation.
 -On the final query, the system sees **nothing** from the previous 20 turns in active context, all context *only* comes from long-term memory retrieval.
 
-It must answer **entirely from long-term memory**:
-- Reconstruct a 9-alias encryption algorithm
-- Track all policy revisions and revocations across timestamps
-- Identify the one surviving rule
-- Correctly apply it to Project Cerberus (4.85M records/day vs 400k limit)
-
--**The Passing Criteria:**
-The system must produce COMPLIANT or NONCOMPLIANT *AND* the following:
-    It must fully re-create *all* previous alliases, where they came from, and the causal linkage.
-    It must also identify the policy revisions, the constraints on them, and why it arrived at its final decision.
-
-The full test harness is available in repo - run yourself to verify results.
-
-
-
 
 ```mermaid
 flowchart TD
